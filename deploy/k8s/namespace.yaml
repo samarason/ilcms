@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ilcms
+  labels:
+    app.kubernetes.io/name: ilcms
+    environment: airgap-poc

@@ -1,5 +1,6 @@
 apiVersion: v2
 name: ilcms
-description: Icelandic Legal Case Management System
+description: ILCMS Air-Gapped Legal Case Management System with Ollama and pgvector
+type: application
 version: 1.0.0
 appVersion: "1.0.0"

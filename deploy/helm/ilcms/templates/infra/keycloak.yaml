@@ -1,50 +1,144 @@
-apiVersion: apps/v1
-kind: StatefulSet
+{{- if .Values.keycloak.enabled }}
+apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: ilcms-keycloak
+  name: {{ .Release.Name }}-keycloak-realm
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  ilcms-realm.json: |
+    {
+      "id": "{{ .Values.app.env.keycloakRealm }}",
+      "realm": "{{ .Values.app.env.keycloakRealm }}",
+      "displayName": "ILCMS Íslenska Málastjórnunarkerfið",
+      "enabled": true,
+      "sslRequired": "none",
+      "registrationAllowed": false,
+      "roles": {
+        "realm": [
+          { "name": "lawyer", "description": "Lögmaður" },
+          { "name": "judge", "description": "Dómari" },
+          { "name": "paralegal", "description": "Lögfræðiaðstoðarmaður" },
+          { "name": "admin", "description": "Stjórnandi" }
+        ]
+      },
+      "clients": [
+        {
+          "clientId": "{{ .Values.app.env.keycloakClientId }}",
+          "name": "ILCMS Vefumsókn",
+          "enabled": true,
+          "publicClient": true,
+          "directAccessGrantsEnabled": true,
+          "standardFlowEnabled": true,
+          "redirectUris": ["*"],
+          "webOrigins": ["*"]
+        }
+      ],
+      "users": [
+        {
+          "username": "lawyer@ilcms.is",
+          "email": "lawyer@ilcms.is",
+          "firstName": "Guðrún",
+          "lastName": "Sigurðardóttir hrl.",
+          "enabled": true,
+          "credentials": [{ "type": "password", "value": "ilcms_password_2026", "temporary": false }],
+          "realmRoles": ["lawyer", "admin"]
+        },
+        {
+          "username": "judge@ilcms.is",
+          "email": "judge@ilcms.is",
+          "firstName": "Jón",
+          "lastName": "Þórðarson héraðsdómari",
+          "enabled": true,
+          "credentials": [{ "type": "password", "value": "ilcms_password_2026", "temporary": false }],
+          "realmRoles": ["judge"]
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-keycloak
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
-  serviceName: ilcms-keycloak
   replicas: 1
   selector:
     matchLabels:
-      app: keycloak
+      app.kubernetes.io/name: keycloak
   template:
     metadata:
       labels:
-        app: keycloak
+        app.kubernetes.io/name: keycloak
     spec:
       containers:
         - name: keycloak
-          image: quay.io/keycloak/keycloak:24.0.4
-          args: ["start-dev"]
+          image: "{{ .Values.keycloak.image.repository }}:{{ .Values.keycloak.image.tag }}"
+          imagePullPolicy: {{ .Values.keycloak.image.pullPolicy }}
+          args:
+            - "start-dev"
+            - "--import-realm"
           ports:
             - containerPort: 8080
+              name: http
+            - containerPort: 9000
+              name: management
           env:
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL
+              value: "jdbc:postgresql://{{ .Release.Name }}-postgres:5432/keycloak_db"
+            - name: KC_DB_USERNAME
+              value: {{ .Values.postgres.auth.username | quote }}
+            - name: KC_DB_PASSWORD
+              value: {{ .Values.postgres.auth.password | quote }}
             - name: KEYCLOAK_ADMIN
-              valueFrom:
-                secretKeyRef:
-                  name: ilcms-secrets
-                  key: KEYCLOAK_ADMIN
+              value: {{ .Values.keycloak.auth.adminUser | quote }}
             - name: KEYCLOAK_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: ilcms-secrets
-                  key: KEYCLOAK_ADMIN_PASSWORD
+              value: {{ .Values.keycloak.auth.adminPassword | quote }}
+            - name: KC_HEALTH_ENABLED
+              value: "true"
             - name: KC_HTTP_ENABLED
               value: "true"
-            - name: KC_PROXY_HEADERS
-              value: "xforwarded"
             - name: KC_HOSTNAME_STRICT
               value: "false"
-            - name: KC_HOSTNAME_STRICT_HTTPS
-              value: "false"
+            - name: JAVA_OPTS_KC_HEAP
+              value: "-Xms256m -Xmx768m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m"
+          resources:
+            {{- toYaml .Values.keycloak.resources | nindent 12 }}
+          volumeMounts:
+            - name: realm-import
+              mountPath: /opt/keycloak/data/import
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 9000
+            initialDelaySeconds: 25
+            periodSeconds: 10
+      volumes:
+        - name: realm-import
+          configMap:
+            name: {{ .Release.Name }}-keycloak-realm
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: ilcms-keycloak
+  name: {{ .Release.Name }}-keycloak
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: keycloak
 spec:
+  type: ClusterIP
   ports:
     - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
   selector:
-    app: keycloak
+    app.kubernetes.io/name: keycloak
+{{- end }}

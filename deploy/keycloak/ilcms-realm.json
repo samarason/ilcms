@@ -1,0 +1,106 @@
+{
+  "id": "ilcms",
+  "realm": "ilcms",
+  "displayName": "ILCMS Íslenska Málastjórnunarkerfið",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "lawyer",
+        "description": "Lögmaður með fullan aðgang að málum og skjölum"
+      },
+      {
+        "name": "judge",
+        "description": "Dómari / Málsstjóri"
+      },
+      {
+        "name": "paralegal",
+        "description": "Lögfræðiaðstoðarmaður / Ritari"
+      },
+      {
+        "name": "admin",
+        "description": "Kerfisstjóri ILCMS"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "ilcms-web",
+      "name": "ILCMS Vefumsókn",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://ilcms.local/*",
+        "http://127.0.0.1:3000/*"
+      ],
+      "webOrigins": [
+        "*"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "lawyer@ilcms.is",
+      "email": "lawyer@ilcms.is",
+      "firstName": "Guðrún",
+      "lastName": "Sigurðardóttir hrl.",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ilcms_password_2026",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "lawyer",
+        "admin"
+      ]
+    },
+    {
+      "username": "judge@ilcms.is",
+      "email": "judge@ilcms.is",
+      "firstName": "Jón",
+      "lastName": "Þórðarson héraðsdómari",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ilcms_password_2026",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "judge"
+      ]
+    },
+    {
+      "username": "paralegal@ilcms.is",
+      "email": "paralegal@ilcms.is",
+      "firstName": "Ásta",
+      "lastName": "Einarsdóttir lögfræðinemi",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ilcms_password_2026",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "paralegal"
+      ]
+    }
+  ]
+}

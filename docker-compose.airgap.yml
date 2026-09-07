@@ -1,0 +1,124 @@
+version: "3.8"
+
+services:
+  # 1. Ollama AI Inference Service (Air-Gapped)
+  ollama:
+    image: ollama/ollama:0.5.7
+    container_name: ilcms-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_MODELS=/root/.ollama/models
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_NUM_PARALLEL=1
+      - OLLAMA_MAX_LOADED_MODELS=1
+      - OLLAMA_KEEP_ALIVE=24h
+    deploy:
+      resources:
+        limits:
+          cpus: '6.0'
+          memory: 10G
+        reservations:
+          cpus: '2.0'
+          memory: 4G
+
+  # 2. PostgreSQL with pgvector extension enabled
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: ilcms-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=ilcms_db
+      - POSTGRES_USER=ilcms_user
+      - POSTGRES_PASSWORD=ilcms_secret_password
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/00-init-keycloak.sql:/docker-entrypoint-initdb.d/00-init-keycloak.sql:ro
+      - ./sql/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # 3. Keycloak 24 OIDC Authentication Server
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.5
+    container_name: ilcms-keycloak
+    restart: unless-stopped
+    command: start-dev --import-realm
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    environment:
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak_db
+      - KC_DB_USERNAME=ilcms_user
+      - KC_DB_PASSWORD=ilcms_secret_password
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin_secret_ilcms
+      - KC_HEALTH_ENABLED=true
+      - KC_HTTP_ENABLED=true
+      - KC_HOSTNAME_STRICT=false
+      - JAVA_OPTS_KC_HEAP=-Xms256m -Xmx768m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m
+    volumes:
+      - ./deploy/keycloak/ilcms-realm.json:/opt/keycloak/data/import/ilcms-realm.json:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+
+  # 4. ILCMS Web Application (Frontend + API Routes)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ilcms-web:latest
+    container_name: ilcms-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - ollama
+      - keycloak
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - AIRGAP_MODE=true
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=gemma2:9b-instruct-q4_K_M
+      - OLLAMA_EMBED_MODEL=nomic-embed-text
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=ilcms
+      - KEYCLOAK_CLIENT_ID=ilcms-web
+      - DATABASE_URL=postgresql://ilcms_user:ilcms_secret_password@postgres:5432/ilcms_db
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+volumes:
+  ollama_data:
+    driver: local
+  postgres_data:
+    driver: local
