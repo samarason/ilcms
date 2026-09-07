@@ -1,0 +1,17 @@
+global:
+  domain: ilcms.local
+  authDomain: auth.ilcms.local
+
+database:
+  user: ilcms_app
+  password: ilcms_secure_db_password
+  name: ilcms
+
+keycloak:
+  adminUser: admin
+  adminPassword: admin_password
+
+images:
+  api: localhost:5001/ilcms-api:v1
+  worker: localhost:5001/ilcms-worker:v1
+  frontend: localhost:5001/ilcms-frontend:v1
