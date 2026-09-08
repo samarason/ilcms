@@ -29,6 +29,23 @@ if [ ! -f "package-lock.json" ]; then
     npm i --package-lock-only 2>/dev/null || true
 fi
 
+echo "Verifying application source files..."
+REQUIRED_LIBS=(
+    "src/lib/store.ts"
+    "src/lib/auth.tsx"
+    "src/lib/ollama.ts"
+    "src/lib/legal-knowledge.ts"
+    "src/lib/court-bundle.ts"
+    "src/lib/statutory-deadlines.ts"
+)
+for lib in "${REQUIRED_LIBS[@]}"; do
+    if [ ! -f "$lib" ]; then
+        echo "ERROR: Missing required source file: $lib"
+        echo "Please ensure the repository is fully updated and all files from src/lib/ are present."
+        exit 1
+    fi
+done
+
 echo "Building ILCMS Web Application Image..."
 docker build -t ilcms-web:latest .
 

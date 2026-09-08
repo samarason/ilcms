@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../lib/auth";
+import { useAuth } from "@/lib/auth";
 
 export default function Dashboard() {
   const auth = useAuth() as any;
