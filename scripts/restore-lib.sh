@@ -125,6 +125,10 @@ export interface DocumentItem {
   status: "READY" | "PROCESSING" | "INDEXED";
   page_count: number;
   created_at: string;
+  summary?: string;
+  content?: string;
+  author?: string;
+  filing_date?: string;
 }
 
 export interface CaseDeadlineItem {
@@ -179,6 +183,29 @@ export const docsStore: DocumentItem[] = [
     status: "READY",
     page_count: 8,
     created_at: "2026-08-16T11:00:00Z",
+    filing_date: "2026-08-16",
+    author: "Guðrún Sigurðardóttir hrl., lögmaður stefnanda",
+    summary: "Stefna Eignarhaldsfélagsins Brekku ehf. á hendur Verktakafélaginu Hamri ehf. vegna vanefnda á verksamningi við Bryggjuhverfi.",
+    content: `STEFNA Í EINKAMÁLI
+
+Ár 2026, þriðjudaginn 16. ágúst, stefnir undirrituð Guðrún Sigurðardóttir, hrl., f.h.:
+Eignarhaldsfélagsins Brekku ehf., kt. 520412-0890,
+að Skútuvogi 12, 104 Reykjavík, hér eftir nefnt stefnandi,
+
+á hendur:
+Verktakafélaginu Hamri ehf., kt. 610819-1420,
+að Tangabryggju 4, 110 Reykjavík, hér eftir nefnt stefndi,
+
+fyrir Héraðsdóm Reykjavíkur, Dómhúsinu við Lækjartorg, til dómþings sem þar verður háð:
+Fimmtudaginn 24. september 2026 kl. 09:30.
+
+I. DÓMKRÖFUR STEFNANDA:
+1. Að viðurkennt verði með dómi að stefnanda hafi verið rétt og heimilt að rifta verksamningi aðila dags. 15. janúar 2024 um uppsteypu og lokafrágang við Bryggjuhverfi 14–18.
+2. Að stefndi verði dæmdur til að greiða stefnanda skaðabætur að fjárhæð kr. 48.500.000, ásamt vöxtum og dráttarvöxtum skv. lögum nr. 38/2001.
+3. Málskostnaður.
+
+II. MÁLSATVIK OG RÖK:
+Verksamningur 15. janúar 2024. Verklok áttu að vera 1. febrúar 2026. Stefndi stöðvaði vinnu í desember 2025. Framvinda var aðeins 54%. Riftun 1. mars 2026.`,
   },
   {
     id: "doc-01-samningur",
@@ -188,6 +215,13 @@ export const docsStore: DocumentItem[] = [
     status: "READY",
     page_count: 24,
     created_at: "2026-08-16T11:05:00Z",
+    filing_date: "2026-08-16",
+    author: "Verkkaupi og aðalverktaki",
+    summary: "Verksamningur aðila um fullnaðarfrágang á 24 íbúðum við Bryggjuhverfi. Samningsfjárhæð kr. 340.000.000.",
+    content: `VERKSAMNINGUR UM BYGGINGARFRAMKVÆMDIR
+Verkkaupi: Eignarhaldsfélagið Brekka ehf.
+Verktaki: Verktakafélagið Hamar ehf.
+Heildarverkverð: kr. 340.000.000. Dagsektir kr. 250.000 á dag.`,
   },
   {
     id: "doc-01-matsgerd",
@@ -197,6 +231,13 @@ export const docsStore: DocumentItem[] = [
     status: "READY",
     page_count: 42,
     created_at: "2026-08-22T08:30:00Z",
+    filing_date: "2026-08-22",
+    author: "Dómkvaddir matsmenn: Ingvar Þórðarson byggingarverkfræðingur og Katrín Birgisdóttir húsameistari",
+    summary: "Dómkvaðning skv. lögum nr. 91/1991. Mat á raunverulegri framvindu (54%), byggingargöllum og heildartjóni (kr. 48.500.000).",
+    content: `DÓMSKÖLLUÐ MATSGERÐ
+Fyrir Héraðsdómi Reykjavíkur í máli nr. E-1024/2026
+Matsmenn: Ingvar Þórðarson og Katrín Birgisdóttir.
+Framvinda unninna verkþátta: 54%. Gallar: kr. 16.400.000. Lokafrágangur: kr. 32.100.000. Heildartjón: kr. 48.500.000.`,
   },
   {
     id: "doc-02-stefna",
@@ -206,6 +247,12 @@ export const docsStore: DocumentItem[] = [
     status: "READY",
     page_count: 6,
     created_at: "2026-08-21T09:00:00Z",
+    filing_date: "2026-08-21",
+    author: "Lögfræðiþjónusta stefnanda",
+    summary: "Stefna á hendur tryggingafélaginu Verði vegna umferðarslyss á Vesturlandsvegi. Krafist bóta skv. lögum nr. 50/1993.",
+    content: `STEFNA Í SKAÐABÓTAMÁLI
+Stefnandi: Helga Sigurðardóttir. Stefndi: Tryggingafélagið Vörður hf.
+Bótakrafa: kr. 21.400.000 skv. 1., 4. og 5. gr. skaðabótalaga nr. 50/1993.`,
   },
   {
     id: "doc-02-laeknisvottord",
@@ -215,6 +262,12 @@ export const docsStore: DocumentItem[] = [
     status: "READY",
     page_count: 14,
     created_at: "2026-08-21T09:10:00Z",
+    filing_date: "2026-08-21",
+    author: "Dr. Ólafur Kjartansson bæklunarlæknir",
+    summary: "Læknisfræðilegt mat á varanlegri örorku (25%) og varanlegum miska (15 stig) í kjölfar hálshnykks.",
+    content: `LÆKNISFRÆÐILEGT ÖRORKUMAT OG SÉRFRÆÐIVOTTORÐ
+Sjúklingur: Helga Sigurðardóttir.
+Varanleg örorka: 25%. Varanlegur miski: 15 stig.`,
   },
   {
     id: "doc-03-kaupsamningur",
@@ -224,6 +277,12 @@ export const docsStore: DocumentItem[] = [
     status: "READY",
     page_count: 11,
     created_at: "2026-09-02T10:00:00Z",
+    filing_date: "2026-09-02",
+    author: "Fasteignasala Reykjavíkur",
+    summary: "Kaupsamningur um 4ra herbergja íbúð að Laugavegi 45. Kaupverð kr. 98.000.000.",
+    content: `KAUPSAMNINGUR UM FASTEIGN
+Kaupandi: Árni Jónsson. Seljandi: Sigurður Ólafsson.
+Laugavegur 45, 101 Reykjavík. Kaupverð kr. 98.000.000. Ástandsyfirlýsing skv. 17. gr. laga nr. 40/2002.`,
   },
   {
     id: "doc-03-mygluskýrsla",
@@ -233,6 +292,11 @@ export const docsStore: DocumentItem[] = [
     status: "READY",
     page_count: 18,
     created_at: "2026-09-02T10:15:00Z",
+    filing_date: "2026-09-02",
+    author: "Náttúrustofa & Byggingagallar ehf.",
+    summary: "Skoðun og sýnataka á Laugavegi 45. Staðfestur útbreiddur mygluvöxtur og ónýt einangrun í útveggjum.",
+    content: `SKOÐUNARSKÝRSLA UM INNIVIST, RAKA OG MYGLU
+Laugavegur 45. Svartmygla (Stachybotrys chartarum). Úrbótakostnaður kr. 14.200.000.`,
   },
 ];
 
@@ -303,7 +367,7 @@ class OllamaClient {
 
   constructor() {
     this.baseUrl = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
-    this.defaultModel = process.env.OLLAMA_MODEL || "gemma2:9b-instruct-q4_K_M";
+    this.defaultModel = process.env.OLLAMA_MODEL || "gemma2:9b";
   }
 
   getBaseUrl(): string {
@@ -340,44 +404,64 @@ class OllamaClient {
   }
 
   async chat(messages: ChatMessage[], modelOverride?: string): Promise<OllamaChatResult> {
-    const model = modelOverride || this.defaultModel;
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
-      const res = await fetch(`${this.baseUrl}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model,
-          messages,
-          stream: false,
-          options: {
-            temperature: 0.2,
-            top_p: 0.9,
-          },
-        }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+    let targetModel = modelOverride || this.defaultModel;
 
-      if (res.ok) {
-        const data = await res.json();
-        const content = data?.message?.content || "";
-        if (content.trim()) {
-          return {
-            text: content,
-            modelUsed: model,
-            isRealInference: true,
-          };
+    const tryChat = async (m: string): Promise<OllamaChatResult | null> => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 18000);
+        const res = await fetch(`${this.baseUrl}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: m,
+            messages,
+            stream: false,
+            options: {
+              temperature: 0.2,
+              top_p: 0.9,
+            },
+          }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const data = await res.json();
+          const content = data?.message?.content || "";
+          if (content.trim()) {
+            return {
+              text: content,
+              modelUsed: m,
+              isRealInference: true,
+            };
+          }
+        }
+      } catch (err) {
+        // Continue
+      }
+      return null;
+    };
+
+    const res1 = await tryChat(targetModel);
+    if (res1) return res1;
+
+    try {
+      const health = await this.checkHealth();
+      if (health.healthy && health.models.length > 0) {
+        const discovered =
+          health.models.find((name: string) => name.toLowerCase().includes("gemma")) ||
+          health.models[0];
+        if (discovered && discovered !== targetModel) {
+          const res2 = await tryChat(discovered);
+          if (res2) return res2;
         }
       }
-    } catch (err) {
-      // Local fallback handled by caller
-    }
+    } catch {}
 
     return {
       text: "",
-      modelUsed: model,
+      modelUsed: targetModel,
       isRealInference: false,
     };
   }

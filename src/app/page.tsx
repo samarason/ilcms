@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 
 export default function Dashboard() {
@@ -34,6 +34,23 @@ export default function Dashboard() {
   ]);
   const [chatInput, setChatInput] = useState("");
   const [askingAi, setAskingAi] = useState(false);
+  const [userHasScrolledUp, setUserHasScrolledUp] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom as questions and answers grow
+  useEffect(() => {
+    if (!userHasScrolledUp) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatMessages, askingAi]);
+
+  const handleChatScroll = () => {
+    if (!chatContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    const isUp = scrollHeight - scrollTop - clientHeight > 60;
+    setUserHasScrolledUp(isUp);
+  };
 
   // New states for Statutory Deadline Engine, Court Bundle, and Precedents
   const [activeTab, setActiveTab] = useState<"docs" | "deadlines" | "bundle" | "law">("docs");
@@ -54,6 +71,11 @@ export default function Dashboard() {
   const [statutes, setStatutes] = useState<any[]>([]);
   const [precedents, setPrecedents] = useState<any[]>([]);
   const [lawSearchQuery, setLawSearchQuery] = useState("");
+
+  // Document Reader state
+  const [selectedDoc, setSelectedDoc] = useState<any | null>(null);
+  const [docSearchQuery, setDocSearchQuery] = useState("");
+  const [docCopied, setDocCopied] = useState(false);
 
   const fetchDeadlines = async (cid: string) => {
     if (!cid) return;
@@ -252,8 +274,12 @@ export default function Dashboard() {
     if (!chatInput.trim() || askingAi) return;
     const query = chatInput;
     setChatInput("");
+    setUserHasScrolledUp(false);
     setChatMessages((prev) => [...prev, { sender: "user", text: query }]);
     setAskingAi(true);
+    setTimeout(() => {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
     try {
       const res = await fetch("/api/v1/ai/chat", {
         method: "POST",
@@ -706,45 +732,385 @@ export default function Dashboard() {
                     {docs.length === 0 ? (
                       <div style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Engin skjöl skráð á þetta mál.</div>
                     ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                         {docs.map((d) => (
                           <div
                             key={d.id}
+                            onClick={() => {
+                              setSelectedDoc(d);
+                              setDocSearchQuery("");
+                              setDocCopied(false);
+                            }}
                             style={{
-                              padding: "10px 12px",
-                              borderRadius: "6px",
+                              padding: "12px 14px",
+                              borderRadius: "8px",
                               background: "#f8fafc",
                               border: "1px solid #e2e8f0",
                               display: "flex",
                               justifyContent: "space-between",
                               alignItems: "center",
+                              cursor: "pointer",
+                              transition: "all 0.15s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = "#93c5fd";
+                              e.currentTarget.style.background = "#f0fdf4";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = "#e2e8f0";
+                              e.currentTarget.style.background = "#f8fafc";
                             }}
                           >
-                            <div>
-                              <div style={{ fontWeight: 500, fontSize: "0.88rem", color: "#1e293b" }}>
-                                📄 {d.title}
+                            <div style={{ flex: 1, marginRight: "12px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "3px" }}>
+                                <span style={{ fontWeight: 600, fontSize: "0.92rem", color: "#1e293b" }}>
+                                  📄 {d.title}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: "0.7rem",
+                                    background: "#e2e8f0",
+                                    color: "#475569",
+                                    padding: "1px 6px",
+                                    borderRadius: "4px",
+                                    fontWeight: 500,
+                                  }}
+                                >
+                                  {d.doc_type}
+                                </span>
                               </div>
-                              <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
-                                {d.doc_type} • {d.page_count} bls.
+                              <div style={{ fontSize: "0.78rem", color: "#64748b", display: "flex", gap: "12px", alignItems: "center" }}>
+                                <span>Bls.: <strong>{d.page_count}</strong></span>
+                                {d.filing_date && <span>Lagt fram: <strong>{d.filing_date}</strong></span>}
+                                {d.author && <span>Höfundur: <em>{d.author}</em></span>}
                               </div>
+                              {d.summary && (
+                                <div style={{ fontSize: "0.76rem", color: "#475569", marginTop: "4px", fontStyle: "italic" }}>
+                                  "{d.summary}"
+                                </div>
+                              )}
                             </div>
-                            <span
-                              style={{
-                                fontSize: "0.75rem",
-                                background: "#dcfce7",
-                                color: "#15803d",
-                                padding: "2px 8px",
-                                borderRadius: "4px",
-                                fontWeight: 600,
-                              }}
-                            >
-                              {d.status}
-                            </span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedDoc(d);
+                                  setDocSearchQuery("");
+                                  setDocCopied(false);
+                                }}
+                                style={{
+                                  background: "#2563eb",
+                                  color: "#fff",
+                                  border: "none",
+                                  borderRadius: "5px",
+                                  padding: "6px 12px",
+                                  fontSize: "0.78rem",
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  boxShadow: "0 1px 2px rgba(37,99,235,0.2)",
+                                }}
+                              >
+                                👁️ Lesa skjal
+                              </button>
+                              <span
+                                style={{
+                                  fontSize: "0.72rem",
+                                  background: "#dcfce7",
+                                  color: "#15803d",
+                                  padding: "3px 8px",
+                                  borderRadius: "4px",
+                                  fontWeight: 600,
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {d.status}
+                              </span>
+                            </div>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
+
+                  {/* DOCUMENT VIEWER MODAL / DÓMASKJALALESARI */}
+                  {selectedDoc && (
+                    <div
+                      style={{
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: "rgba(15, 23, 42, 0.7)",
+                        backdropFilter: "blur(4px)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: 1000,
+                        padding: "16px",
+                      }}
+                      onClick={() => setSelectedDoc(null)}
+                    >
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          background: "#fff",
+                          borderRadius: "10px",
+                          width: "100%",
+                          maxWidth: "860px",
+                          maxHeight: "90vh",
+                          display: "flex",
+                          flexDirection: "column",
+                          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+                          border: "1px solid #cbd5e1",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {/* Header */}
+                        <div
+                          style={{
+                            padding: "14px 18px",
+                            background: "#0f172a",
+                            color: "#fff",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            borderBottom: "1px solid #334155",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <span style={{ fontSize: "1.2rem" }}>⚖️</span>
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: "0.98rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                                {selectedDoc.title}
+                                <span style={{ background: "#2563eb", color: "#fff", fontSize: "0.68rem", padding: "2px 6px", borderRadius: "3px" }}>
+                                  {selectedDoc.doc_type}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: "0.74rem", color: "#94a3b8" }}>
+                                Dómaskjal í máli {activeCase?.case_number} • {selectedDoc.page_count} blaðsíður • Skráð {selectedDoc.filing_date || selectedDoc.created_at?.split("T")[0]}
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <button
+                              onClick={() => {
+                                if (selectedDoc?.content) {
+                                  navigator.clipboard.writeText(selectedDoc.content);
+                                  setDocCopied(true);
+                                  setTimeout(() => setDocCopied(false), 2000);
+                                }
+                              }}
+                              style={{
+                                background: docCopied ? "#16a34a" : "#334155",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: "4px",
+                                padding: "5px 10px",
+                                fontSize: "0.75rem",
+                                cursor: "pointer",
+                              }}
+                            >
+                              {docCopied ? "✓ Afritað" : "📋 Afrita texta"}
+                            </button>
+                            <button
+                              onClick={() => setSelectedDoc(null)}
+                              style={{
+                                background: "transparent",
+                                color: "#94a3b8",
+                                border: "none",
+                                fontSize: "1.2rem",
+                                cursor: "pointer",
+                                padding: "4px 8px",
+                                lineHeight: 1,
+                              }}
+                              title="Loka"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Search & Metadata Ribbon */}
+                        <div
+                          style={{
+                            padding: "10px 18px",
+                            background: "#f8fafc",
+                            borderBottom: "1px solid #e2e8f0",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            gap: "12px",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, minWidth: "220px" }}>
+                            <span style={{ fontSize: "0.85rem", color: "#64748b" }}>🔍</span>
+                            <input
+                              type="text"
+                              placeholder="Leita að orði eða hugtaki í skjalinu..."
+                              value={docSearchQuery}
+                              onChange={(e) => setDocSearchQuery(e.target.value)}
+                              style={{
+                                width: "100%",
+                                padding: "5px 8px",
+                                fontSize: "0.82rem",
+                                border: "1px solid #cbd5e1",
+                                borderRadius: "4px",
+                                outline: "none",
+                              }}
+                            />
+                            {docSearchQuery && (
+                              <button
+                                onClick={() => setDocSearchQuery("")}
+                                style={{ background: "transparent", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "0.8rem" }}
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                          <div style={{ fontSize: "0.74rem", color: "#64748b", display: "flex", gap: "10px" }}>
+                            <span>Höfundur: <strong>{selectedDoc.author || "Málsaðili"}</strong></span>
+                            <span>Staða: <strong style={{ color: "#16a34a" }}>{selectedDoc.status}</strong></span>
+                            <span>RAG Vigrað: <strong>pgvector 768d</strong></span>
+                          </div>
+                        </div>
+
+                        {/* Document Content Viewport */}
+                        <div
+                          style={{
+                            padding: "24px 30px",
+                            overflowY: "auto",
+                            flex: 1,
+                            background: "#f1f5f9",
+                            display: "flex",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <div
+                            style={{
+                              background: "#fff",
+                              width: "100%",
+                              maxWidth: "760px",
+                              padding: "36px 40px",
+                              borderRadius: "4px",
+                              boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
+                              border: "1px solid #e2e8f0",
+                              fontFamily: "'Times New Roman', Times, serif, Georgia",
+                              lineHeight: 1.65,
+                              color: "#0f172a",
+                              fontSize: "0.95rem",
+                              whiteSpace: "pre-wrap",
+                            }}
+                          >
+                            {/* Official Court Document Stamp */}
+                            <div
+                              style={{
+                                borderBottom: "2px double #0f172a",
+                                paddingBottom: "12px",
+                                marginBottom: "20px",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "flex-start",
+                                fontFamily: "sans-serif",
+                              }}
+                            >
+                              <div>
+                                <div style={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: "#1e293b" }}>
+                                  Héraðsdómur Reykjavíkur • Málsskjöl
+                                </div>
+                                <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#2563eb", marginTop: "2px" }}>
+                                  Mál nr. {activeCase?.case_number}
+                                </div>
+                              </div>
+                              <div
+                                style={{
+                                  border: "1px solid #0f172a",
+                                  padding: "3px 8px",
+                                  fontSize: "0.7rem",
+                                  fontWeight: 700,
+                                  textTransform: "uppercase",
+                                  textAlign: "center",
+                                  background: "#f8fafc",
+                                }}
+                              >
+                                Lagt fram í dómþingi<br />
+                                {selectedDoc.filing_date || selectedDoc.created_at?.split("T")[0]}
+                              </div>
+                            </div>
+
+                            {/* Document Text */}
+                            {selectedDoc.content ? (
+                              docSearchQuery.trim() ? (
+                                (() => {
+                                  const text = selectedDoc.content;
+                                  const q = docSearchQuery.trim();
+                                  const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+                                  const parts = text.split(regex);
+                                  return (
+                                    <div>
+                                      {parts.map((part: string, i: number) =>
+                                        regex.test(part) ? (
+                                          <mark key={i} style={{ background: "#fef08a", color: "#854d0e", padding: "1px 2px", borderRadius: "2px" }}>
+                                            {part}
+                                          </mark>
+                                        ) : (
+                                          <span key={i}>{part}</span>
+                                        )
+                                      )}
+                                    </div>
+                                  );
+                                })()
+                              ) : (
+                                selectedDoc.content
+                              )
+                            ) : (
+                              <div style={{ textAlign: "center", color: "#94a3b8", padding: "40px 0", fontFamily: "sans-serif" }}>
+                                📄 Ekkert textainnihald fannst fyrir þetta skjal.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div
+                          style={{
+                            padding: "10px 18px",
+                            background: "#fff",
+                            borderTop: "1px solid #e2e8f0",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            fontSize: "0.76rem",
+                            color: "#64748b",
+                          }}
+                        >
+                          <div>
+                            ILCMS Air-Gapped Case Management System • Ótengt innra net
+                          </div>
+                          <button
+                            onClick={() => setSelectedDoc(null)}
+                            style={{
+                              background: "#0f172a",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: "4px",
+                              padding: "6px 14px",
+                              fontSize: "0.78rem",
+                              cursor: "pointer",
+                              fontWeight: 500,
+                            }}
+                          >
+                            Loka glugga
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1366,50 +1732,157 @@ export default function Dashboard() {
             background: "#fff",
             display: "flex",
             flexDirection: "column",
+            height: "100%",
+            minHeight: 0,
+            overflow: "hidden",
+            position: "relative",
           }}
         >
           <div
             style={{
-              padding: "14px 16px",
+              padding: "12px 16px",
               borderBottom: "1px solid #e2e8f0",
               background: "#f8fafc",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              flexShrink: 0,
             }}
           >
             <div>
-              <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "#0f172a" }}>
-                Lögfræðiaðstoð AI
+              <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "#0f172a", display: "flex", alignItems: "center", gap: "6px" }}>
+                <span>Lögfræðiaðstoð AI</span>
+                {chatMessages.filter((m) => m.sender === "user").length > 0 && (
+                  <span
+                    style={{
+                      fontSize: "0.68rem",
+                      background: "#e2e8f0",
+                      color: "#475569",
+                      padding: "1px 6px",
+                      borderRadius: "10px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {chatMessages.filter((m) => m.sender === "user").length} spurning{chatMessages.filter((m) => m.sender === "user").length > 1 ? "ar" : ""}
+                  </span>
+                )}
               </div>
               <div style={{ fontSize: "0.72rem", color: "#64748b" }}>
                 Ollama Local RAG • pgvector
               </div>
             </div>
-            <span
-              style={{
-                fontSize: "0.7rem",
-                background: "#f1f5f9",
-                color: "#334155",
-                padding: "2px 6px",
-                borderRadius: "4px",
-                border: "1px solid #cbd5e1",
-              }}
-            >
-              100% Einangrað
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              {chatMessages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChatMessages([
+                      {
+                        sender: "ai",
+                        text: "Góðan dag. Ég er staðbundinn lögfræðiaðstoðarmaður (Air-Gapped). Ég get greint og svarað spurningum út frá málsskjölum með beinum tilvísunum.",
+                        inference_source: "local_airgap_cache",
+                      },
+                    ]);
+                    setUserHasScrolledUp(false);
+                  }}
+                  title="Hreinsa spjallferil"
+                  style={{
+                    fontSize: "0.7rem",
+                    background: "#f1f5f9",
+                    color: "#64748b",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "4px",
+                    padding: "3px 7px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Hreinsa
+                </button>
+              )}
+              <span
+                style={{
+                  fontSize: "0.7rem",
+                  background: "#f1f5f9",
+                  color: "#334155",
+                  padding: "2px 6px",
+                  borderRadius: "4px",
+                  border: "1px solid #cbd5e1",
+                }}
+              >
+                100% Einangrað
+              </span>
+            </div>
           </div>
 
           <div
+            ref={chatContainerRef}
+            onScroll={handleChatScroll}
             style={{
               flex: 1,
+              minHeight: 0,
               overflowY: "auto",
               padding: "14px",
               display: "flex",
               flexDirection: "column",
-              gap: "10px",
+              gap: "12px",
+              scrollBehavior: "smooth",
             }}
           >
+            {chatMessages.length <= 1 && (
+              <div
+                style={{
+                  background: "#f8fafc",
+                  border: "1px dashed #cbd5e1",
+                  borderRadius: "8px",
+                  padding: "10px 12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px",
+                }}
+              >
+                <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>
+                  💡 Dæmi um fyrirspurnir í málsskjöl:
+                </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  {[
+                    "Hverjir eru málsaðilar og dómkröfur?",
+                    "Hvað kemur fram í matsgerð dómkvaddra matsmanna?",
+                    "Hverjir eru helstu frestir samkvæmt lögum nr. 91/1991?",
+                    "Hvaða sönnunargögn liggja fyrir í málinu?",
+                  ].map((suggestion, si) => (
+                    <button
+                      key={si}
+                      type="button"
+                      onClick={() => {
+                        setChatInput(suggestion);
+                      }}
+                      style={{
+                        background: "#fff",
+                        color: "#1d4ed8",
+                        border: "1px solid #bfdbfe",
+                        borderRadius: "6px",
+                        padding: "5px 8px",
+                        fontSize: "0.74rem",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        transition: "all 0.1s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#eff6ff";
+                        e.currentTarget.style.borderColor = "#93c5fd";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "#fff";
+                        e.currentTarget.style.borderColor = "#bfdbfe";
+                      }}
+                    >
+                      💬 {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {chatMessages.map((m, i) => (
               <div
                 key={i}
@@ -1423,9 +1896,24 @@ export default function Dashboard() {
                   border: m.sender === "user" ? "none" : "1px solid #e2e8f0",
                   fontSize: "0.88rem",
                   lineHeight: 1.5,
+                  boxShadow: m.sender === "user" ? "0 1px 2px rgba(37,99,235,0.2)" : "0 1px 2px rgba(0,0,0,0.03)",
                 }}
               >
-                <div>{m.text}</div>
+                <div style={{ whiteSpace: "pre-wrap" }}>{m.text}</div>
+                {m.sender === "ai" && m.inference_source && (
+                  <div style={{ marginTop: "6px", fontSize: "0.7rem", color: "#64748b", display: "flex", alignItems: "center", gap: "6px" }}>
+                    {m.inference_source === "ollama_airgap" && (
+                      <span style={{ background: "#ecfdf5", color: "#047857", padding: "1px 6px", borderRadius: "3px" }}>
+                        ⚡ Ollama Air-Gap ({m.model || "gemma2:9b"})
+                      </span>
+                    )}
+                    {m.inference_source === "local_airgap_cache" && (
+                      <span style={{ background: "#f1f5f9", color: "#475569", padding: "1px 6px", borderRadius: "3px" }}>
+                        🛡️ Staðbundin lögfræðigreining
+                      </span>
+                    )}
+                  </div>
+                )}
                 {m.citations && m.citations.length > 0 && (
                   <div
                     style={{
@@ -1437,11 +1925,41 @@ export default function Dashboard() {
                     }}
                   >
                     <span style={{ fontWeight: 600 }}>📌 Tilvísun í málsskjöl:</span>
-                    {m.citations.map((c: any, ci: number) => (
-                      <div key={ci} style={{ marginTop: "2px", fontStyle: "italic" }}>
-                        • {c.citation_key}: {c.excerpt}
-                      </div>
-                    ))}
+                    {m.citations.map((c: any, ci: number) => {
+                      const matchedDoc = docs.find(
+                        (d) =>
+                          d.title.toLowerCase().includes(c.citation_key.toLowerCase()) ||
+                          c.citation_key.toLowerCase().includes(d.title.slice(0, 15).toLowerCase())
+                      );
+                      return (
+                        <div key={ci} style={{ marginTop: "3px", fontStyle: "italic", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
+                          <span>• {c.citation_key}: {c.excerpt}</span>
+                          {matchedDoc && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedDoc(matchedDoc);
+                                setDocSearchQuery("");
+                                setDocCopied(false);
+                              }}
+                              style={{
+                                background: m.sender === "user" ? "rgba(255,255,255,0.2)" : "#eff6ff",
+                                color: m.sender === "user" ? "#fff" : "#2563eb",
+                                border: "none",
+                                borderRadius: "4px",
+                                padding: "2px 7px",
+                                fontSize: "0.7rem",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                                fontWeight: 600,
+                              }}
+                            >
+                              Lesa ↗
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1455,12 +1973,47 @@ export default function Dashboard() {
                   borderRadius: "8px",
                   fontSize: "0.8rem",
                   color: "#64748b",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
                 }}
               >
-                Greini málsskjöl með staðbundnu mállíkani...
+                <span>⏳</span> Greini málsskjöl með staðbundnu mállíkani...
               </div>
             )}
+            <div ref={chatEndRef} style={{ height: "1px", width: "100%" }} />
           </div>
+
+          {/* Floating jump to bottom button */}
+          {userHasScrolledUp && (
+            <button
+              type="button"
+              onClick={() => {
+                chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+                setUserHasScrolledUp(false);
+              }}
+              style={{
+                position: "absolute",
+                bottom: "72px",
+                right: "18px",
+                background: "#0f172a",
+                color: "#fff",
+                border: "none",
+                borderRadius: "20px",
+                padding: "6px 14px",
+                fontSize: "0.74rem",
+                fontWeight: 600,
+                boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+                zIndex: 20,
+              }}
+            >
+              ↓ Fletta til botns
+            </button>
+          )}
 
           <form
             onSubmit={handleSendChat}
@@ -1470,6 +2023,7 @@ export default function Dashboard() {
               display: "flex",
               gap: "8px",
               background: "#fff",
+              flexShrink: 0,
             }}
           >
             <input

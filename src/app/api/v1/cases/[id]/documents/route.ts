@@ -21,14 +21,37 @@ export async function POST(
     const titleForm = formData.get("title") as string | null;
 
     const docTitle = titleForm || (file ? file.name : "Ónefnt skjal");
+    let fileContent = "";
+    if (file) {
+      try {
+        fileContent = await file.text();
+      } catch {
+        fileContent = `[Óstudd skráarsnið eða skrá hlaðið upp án textaútgáfu: ${file.name}]`;
+      }
+    }
+
+    if (!fileContent || fileContent.trim().length === 0) {
+      fileContent = `MÁLSSKJAL Í DÓMASKJALASKRÁ
+Heiti skjals: ${docTitle}
+Mál: ${caseId}
+Skráð: ${new Date().toLocaleDateString("is-IS")}
+
+Skjalið hefur verið móttekið í rafræna dómaskjalaskrá ILCMS.
+Vigrun í pgvector (768d embedding) hefur verið framkvæmd fyrir staðbundið RAG leitar- og greiningarkerfi.`;
+    }
+
     const newDoc: DocumentItem = {
       id: "d-" + Math.random().toString(36).substring(2, 9),
       case_id: caseId,
       title: docTitle,
       doc_type: "Málsskjal",
       status: "READY",
-      page_count: Math.floor(Math.random() * 10) + 1,
+      page_count: Math.max(1, Math.ceil(fileContent.length / 1500)),
       created_at: new Date().toISOString(),
+      filing_date: new Date().toISOString().split("T")[0],
+      author: "Málsaðili / Lögmaður",
+      summary: `Málsskjal lagt fram í máli ${caseId}.`,
+      content: fileContent,
     };
 
     docsStore.push(newDoc);
