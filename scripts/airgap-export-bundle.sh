@@ -24,6 +24,11 @@ for img in "${IMAGES[@]}"; do
     docker pull "$img"
 done
 
+if [ ! -f "package-lock.json" ]; then
+    echo "Ensuring package-lock.json exists..."
+    npm i --package-lock-only 2>/dev/null || true
+fi
+
 echo "Building ILCMS Web Application Image..."
 docker build -t ilcms-web:latest .
 
