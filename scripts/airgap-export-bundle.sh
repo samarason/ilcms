@@ -30,6 +30,11 @@ if [ ! -f "package-lock.json" ]; then
 fi
 
 echo "Verifying application source files..."
+if [ -f "./scripts/restore-lib.sh" ]; then
+    chmod +x ./scripts/restore-lib.sh
+    ./scripts/restore-lib.sh
+fi
+
 REQUIRED_LIBS=(
     "src/lib/store.ts"
     "src/lib/auth.tsx"
@@ -41,7 +46,7 @@ REQUIRED_LIBS=(
 for lib in "${REQUIRED_LIBS[@]}"; do
     if [ ! -f "$lib" ]; then
         echo "ERROR: Missing required source file: $lib"
-        echo "Please ensure the repository is fully updated and all files from src/lib/ are present."
+        echo "Please ensure all files from src/lib/ are present."
         exit 1
     fi
 done
