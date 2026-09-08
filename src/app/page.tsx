@@ -77,6 +77,12 @@ export default function Dashboard() {
   const [docSearchQuery, setDocSearchQuery] = useState("");
   const [docCopied, setDocCopied] = useState(false);
 
+  // Document Notes ("Athugasemdir") state
+  const [activeNoteDoc, setActiveNoteDoc] = useState<any | null>(null);
+  const [noteInput, setNoteInput] = useState<string>("");
+  const [savingNote, setSavingNote] = useState<boolean>(false);
+  const [noteSaveStatus, setNoteSaveStatus] = useState<string>("");
+
   const fetchDeadlines = async (cid: string) => {
     if (!cid) return;
     try {
@@ -267,6 +273,102 @@ export default function Dashboard() {
       fetchDocs(selectedCaseId);
     }
     setUploading(false);
+  };
+
+  const openNotesModal = (doc: any) => {
+    setActiveNoteDoc(doc);
+    setNoteInput(doc.notes || "");
+    setNoteSaveStatus("");
+  };
+
+  const handleSaveNote = async () => {
+    if (!activeNoteDoc || !selectedCaseId) return;
+    setSavingNote(true);
+    setNoteSaveStatus("");
+    try {
+      const res = await fetch(`/api/v1/cases/${selectedCaseId}/documents`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          doc_id: activeNoteDoc.id,
+          notes: noteInput,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setDocs((prevDocs) =>
+          prevDocs.map((d) =>
+            d.id === activeNoteDoc.id
+              ? { ...d, notes: data.notes, notes_updated_at: data.notes_updated_at }
+              : d
+          )
+        );
+        setActiveNoteDoc((prev: any) => (prev ? { ...prev, notes: data.notes } : null));
+        if (selectedDoc && selectedDoc.id === activeNoteDoc.id) {
+          setSelectedDoc((prev: any) => (prev ? { ...prev, notes: data.notes } : null));
+        }
+        setNoteSaveStatus("✓ Athugasemd vistuð!");
+        setTimeout(() => {
+          setActiveNoteDoc(null);
+          setNoteSaveStatus("");
+        }, 600);
+      } else {
+        setNoteSaveStatus("Villa við að vista athugasemd.");
+      }
+    } catch {
+      setNoteSaveStatus("Villa í tengingu.");
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const handleDeleteNote = async () => {
+    if (!activeNoteDoc || !selectedCaseId) return;
+    setSavingNote(true);
+    setNoteSaveStatus("");
+    try {
+      const res = await fetch(`/api/v1/cases/${selectedCaseId}/documents`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          doc_id: activeNoteDoc.id,
+          notes: "",
+        }),
+      });
+
+      if (res.ok) {
+        setDocs((prevDocs) =>
+          prevDocs.map((d) =>
+            d.id === activeNoteDoc.id
+              ? { ...d, notes: "", notes_updated_at: undefined }
+              : d
+          )
+        );
+        setActiveNoteDoc((prev: any) => (prev ? { ...prev, notes: "" } : null));
+        if (selectedDoc && selectedDoc.id === activeNoteDoc.id) {
+          setSelectedDoc((prev: any) => (prev ? { ...prev, notes: "" } : null));
+        }
+        setNoteInput("");
+        setNoteSaveStatus("✓ Athugasemd eytt!");
+        setTimeout(() => {
+          setActiveNoteDoc(null);
+          setNoteSaveStatus("");
+        }, 600);
+      } else {
+        setNoteSaveStatus("Villa við að eyða athugasemd.");
+      }
+    } catch {
+      setNoteSaveStatus("Villa í tengingu.");
+    } finally {
+      setSavingNote(false);
+    }
   };
 
   const handleSendChat = async (e: React.FormEvent) => {
@@ -789,6 +891,36 @@ export default function Dashboard() {
                                   "{d.summary}"
                                 </div>
                               )}
+                              {d.notes && d.notes.trim().length > 0 && (
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openNotesModal(d);
+                                  }}
+                                  style={{
+                                    marginTop: "6px",
+                                    background: "#fffbeb",
+                                    border: "1px solid #fde68a",
+                                    borderRadius: "6px",
+                                    padding: "5px 10px",
+                                    fontSize: "0.77rem",
+                                    color: "#92400e",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "6px",
+                                    cursor: "pointer",
+                                  }}
+                                  title="Smelltu til að skoða eða breyta athugasemd"
+                                >
+                                  <span style={{ fontWeight: 700, fontSize: "0.8rem", whiteSpace: "nowrap" }}>📝 Athugasemd:</span>
+                                  <span style={{ fontStyle: "italic", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {d.notes}
+                                  </span>
+                                  <span style={{ fontSize: "0.7rem", color: "#b45309", fontWeight: 600, textDecoration: "underline", whiteSpace: "nowrap" }}>
+                                    Skoða / Breyta
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                               <button
@@ -816,6 +948,75 @@ export default function Dashboard() {
                               >
                                 👁️ Lesa skjal
                               </button>
+
+                              {/* Button next to "Lesa skjal": Athugasemdir button if attached, or option to add notes */}
+                              {d.notes && d.notes.trim().length > 0 ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openNotesModal(d);
+                                  }}
+                                  title="Skoða eða breyta athugasemd við málsskjal"
+                                  style={{
+                                    background: "#fef3c7",
+                                    color: "#92400e",
+                                    border: "1px solid #f59e0b",
+                                    borderRadius: "5px",
+                                    padding: "6px 12px",
+                                    fontSize: "0.78rem",
+                                    fontWeight: 600,
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "5px",
+                                    boxShadow: "0 1px 2px rgba(245,158,11,0.2)",
+                                    transition: "all 0.15s ease",
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = "#fde68a";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = "#fef3c7";
+                                  }}
+                                >
+                                  <span>📝</span> Athugasemdir
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openNotesModal(d);
+                                  }}
+                                  title="Bæta við athugasemd við þetta málsskjal"
+                                  style={{
+                                    background: "#fff",
+                                    color: "#475569",
+                                    border: "1px dashed #cbd5e1",
+                                    borderRadius: "5px",
+                                    padding: "6px 10px",
+                                    fontSize: "0.78rem",
+                                    fontWeight: 500,
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    transition: "all 0.15s ease",
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = "#f1f5f9";
+                                    e.currentTarget.style.borderColor = "#94a3b8";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = "#fff";
+                                    e.currentTarget.style.borderColor = "#cbd5e1";
+                                  }}
+                                >
+                                  <span>+</span> Athugasemd
+                                </button>
+                              )}
+
                               <span
                                 style={{
                                   fontSize: "0.72rem",
@@ -897,6 +1098,26 @@ export default function Dashboard() {
                             </div>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <button
+                              type="button"
+                              onClick={() => openNotesModal(selectedDoc)}
+                              title={selectedDoc.notes ? "Skoða eða breyta athugasemd" : "Bæta við athugasemd"}
+                              style={{
+                                background: selectedDoc.notes ? "#fef3c7" : "#334155",
+                                color: selectedDoc.notes ? "#92400e" : "#fff",
+                                border: selectedDoc.notes ? "1px solid #f59e0b" : "1px solid #475569",
+                                borderRadius: "4px",
+                                padding: "5px 10px",
+                                fontSize: "0.75rem",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                              }}
+                            >
+                              📝 {selectedDoc.notes ? "Athugasemdir" : "+ Athugasemd"}
+                            </button>
                             <button
                               onClick={() => {
                                 if (selectedDoc?.content) {
@@ -988,9 +1209,61 @@ export default function Dashboard() {
                             flex: 1,
                             background: "#f1f5f9",
                             display: "flex",
-                            justifyContent: "center",
+                            flexDirection: "column",
+                            alignItems: "center",
                           }}
                         >
+                          {selectedDoc.notes && selectedDoc.notes.trim().length > 0 && (
+                            <div
+                              style={{
+                                width: "100%",
+                                maxWidth: "760px",
+                                marginBottom: "16px",
+                                background: "#fffbeb",
+                                border: "1px solid #fde68a",
+                                borderRadius: "6px",
+                                padding: "12px 16px",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "flex-start",
+                                gap: "12px",
+                                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                              }}
+                            >
+                              <div style={{ flex: 1 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+                                  <span style={{ fontSize: "1rem" }}>📝</span>
+                                  <strong style={{ fontSize: "0.86rem", color: "#92400e" }}>Athugasemd við málsskjal:</strong>
+                                  {selectedDoc.notes_updated_at && (
+                                    <span style={{ fontSize: "0.72rem", color: "#b45309" }}>
+                                      (uppfært {new Date(selectedDoc.notes_updated_at).toLocaleDateString("is-IS")})
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: "0.86rem", color: "#78350f", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+                                  {selectedDoc.notes}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => openNotesModal(selectedDoc)}
+                                style={{
+                                  background: "#fef3c7",
+                                  color: "#92400e",
+                                  border: "1px solid #f59e0b",
+                                  borderRadius: "4px",
+                                  padding: "5px 10px",
+                                  fontSize: "0.75rem",
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                Breyta
+                              </button>
+                            </div>
+                          )}
+
                           <div
                             style={{
                               background: "#fff",
@@ -2258,6 +2531,296 @@ export default function Dashboard() {
               >
                 Loka yfirliti
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ATHUGASEMDIR (DOCUMENT NOTES) MODAL */}
+      {activeNoteDoc && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.75)",
+            backdropFilter: "blur(4px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={() => {
+            if (!savingNote) {
+              setActiveNoteDoc(null);
+              setNoteSaveStatus("");
+            }
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: "10px",
+              width: "100%",
+              maxWidth: "620px",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              border: "1px solid #cbd5e1",
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: "16px 20px",
+                background: "#0f172a",
+                color: "#fff",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderBottom: "1px solid #334155",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "1.25rem" }}>📝</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "1rem" }}>
+                    Athugasemdir við málsskjal
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
+                    Mál nr. {activeCase?.case_number || "Óskráð"} • Einkamálalög nr. 91/1991
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveNoteDoc(null);
+                  setNoteSaveStatus("");
+                }}
+                disabled={savingNote}
+                style={{
+                  background: "transparent",
+                  color: "#94a3b8",
+                  border: "none",
+                  fontSize: "1.25rem",
+                  cursor: "pointer",
+                  padding: "4px 8px",
+                  lineHeight: 1,
+                }}
+                title="Loka"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+              {/* Document Reference Box */}
+              <div
+                style={{
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "8px",
+                  padding: "12px 14px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#1e293b" }}>
+                    📄 {activeNoteDoc.title}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "0.7rem",
+                      background: "#e0e7ff",
+                      color: "#3730a3",
+                      padding: "2px 7px",
+                      borderRadius: "4px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {activeNoteDoc.doc_type}
+                  </span>
+                </div>
+                <div style={{ fontSize: "0.76rem", color: "#64748b", display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                  <span>Blaðsíðufjöldi: <strong>{activeNoteDoc.page_count} bls.</strong></span>
+                  {activeNoteDoc.filing_date && <span>Lagt fram: <strong>{activeNoteDoc.filing_date}</strong></span>}
+                  {activeNoteDoc.author && <span>Höfundur: <em>{activeNoteDoc.author}</em></span>}
+                  {activeNoteDoc.notes_updated_at && (
+                    <span style={{ color: "#92400e" }}>
+                      Síðast uppfært: <strong>{new Date(activeNoteDoc.notes_updated_at).toLocaleDateString("is-IS")}</strong>
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Legal Annotation Chips */}
+              <div>
+                <div style={{ fontSize: "0.74rem", fontWeight: 600, color: "#64748b", marginBottom: "6px" }}>
+                  Flýtival fyrir lögmannsathugasemdir:
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                  {[
+                    "Lykilatriði í málflutningi",
+                    "Kanna sönnunargildi",
+                    "Athuga frest",
+                    "Bera saman við fylgiskjöl",
+                    "Óska eftir yfirmati",
+                  ].map((tag, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        const trimmed = noteInput.trim();
+                        const prefix = trimmed ? `${trimmed}\n• ` : "• ";
+                        setNoteInput(`${prefix}${tag}: `);
+                      }}
+                      style={{
+                        background: "#f1f5f9",
+                        color: "#334155",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "14px",
+                        padding: "3px 10px",
+                        fontSize: "0.72rem",
+                        cursor: "pointer",
+                      }}
+                    >
+                      + {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Textarea */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#334155" }}>
+                  Athugasemd við málsskjalið (Notes):
+                </label>
+                <textarea
+                  rows={6}
+                  value={noteInput}
+                  onChange={(e) => setNoteInput(e.target.value)}
+                  placeholder="Skráðu athugasemdir við málsskjalið hér, t.d. greiningu á sönnunargildi, lykilröksemdir fyrir aðalmálflutning eða leiðbeiningar vegna dómtöku..."
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.86rem",
+                    lineHeight: 1.5,
+                    outline: "none",
+                    fontFamily: "inherit",
+                    resize: "vertical",
+                  }}
+                />
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#64748b" }}>
+                  <span>Hvert málsskjal hefur eina tengda athugasemd.</span>
+                  <span>{noteInput.length} stafir</span>
+                </div>
+              </div>
+
+              {/* Feedback status */}
+              {noteSaveStatus && (
+                <div
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    background: noteSaveStatus.includes("✓") ? "#dcfce7" : "#fee2e2",
+                    color: noteSaveStatus.includes("✓") ? "#15803d" : "#b91c1c",
+                    border: noteSaveStatus.includes("✓") ? "1px solid #86efac" : "1px solid #fca5a5",
+                  }}
+                >
+                  {noteSaveStatus}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div
+              style={{
+                padding: "12px 20px",
+                background: "#f8fafc",
+                borderTop: "1px solid #e2e8f0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                {activeNoteDoc.notes && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteNote}
+                    disabled={savingNote}
+                    style={{
+                      background: "transparent",
+                      color: "#dc2626",
+                      border: "1px solid #fca5a5",
+                      borderRadius: "5px",
+                      padding: "6px 12px",
+                      fontSize: "0.78rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Eyða athugasemd
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveNoteDoc(null);
+                    setNoteSaveStatus("");
+                  }}
+                  disabled={savingNote}
+                  style={{
+                    background: "#fff",
+                    color: "#475569",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "5px",
+                    padding: "6px 14px",
+                    fontSize: "0.8rem",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                  }}
+                >
+                  Hætta við
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveNote}
+                  disabled={savingNote}
+                  style={{
+                    background: "#2563eb",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "5px",
+                    padding: "6px 18px",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    boxShadow: "0 1px 2px rgba(37,99,235,0.2)",
+                  }}
+                >
+                  {savingNote ? "Vistar..." : "Vista athugasemd"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

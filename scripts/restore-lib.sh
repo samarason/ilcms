@@ -129,6 +129,8 @@ export interface DocumentItem {
   content?: string;
   author?: string;
   filing_date?: string;
+  notes?: string;
+  notes_updated_at?: string;
 }
 
 export interface CaseDeadlineItem {
@@ -186,6 +188,8 @@ export const docsStore: DocumentItem[] = [
     filing_date: "2026-08-16",
     author: "Guðrún Sigurðardóttir hrl., lögmaður stefnanda",
     summary: "Stefna Eignarhaldsfélagsins Brekku ehf. á hendur Verktakafélaginu Hamri ehf. vegna vanefnda á verksamningi við Bryggjuhverfi.",
+    notes: "Birting staðfest af stefnuvotti 16. ágúst. Gæta að því að greinargerðarfrestur stefnda rennur út 16. september 2026.",
+    notes_updated_at: "2026-08-17T09:15:00Z",
     content: `STEFNA Í EINKAMÁLI
 
 Ár 2026, þriðjudaginn 16. ágúst, stefnir undirrituð Guðrún Sigurðardóttir, hrl., f.h.:
@@ -234,6 +238,8 @@ Heildarverkverð: kr. 340.000.000. Dagsektir kr. 250.000 á dag.`,
     filing_date: "2026-08-22",
     author: "Dómkvaddir matsmenn: Ingvar Þórðarson byggingarverkfræðingur og Katrín Birgisdóttir húsameistari",
     summary: "Dómkvaðning skv. lögum nr. 91/1991. Mat á raunverulegri framvindu (54%), byggingargöllum og heildartjóni (kr. 48.500.000).",
+    notes: "Athuga sérstaklega útreikning á bls. 28 varðandi rakaskemmdir og bera saman við verksamning. Gera athugasemd við málflutning ef gagnaðili krefst yfirmats.",
+    notes_updated_at: "2026-08-23T14:20:00Z",
     content: `DÓMSKÖLLUÐ MATSGERÐ
 Fyrir Héraðsdómi Reykjavíkur í máli nr. E-1024/2026
 Matsmenn: Ingvar Þórðarson og Katrín Birgisdóttir.

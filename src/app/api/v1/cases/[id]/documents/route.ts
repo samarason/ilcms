@@ -65,3 +65,32 @@ Vigrun í pgvector (768d embedding) hefur verið framkvæmd fyrir staðbundið R
     return NextResponse.json({ error: "Failed to upload document" }, { status: 400 });
   }
 }
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const caseId = params.id;
+    const body = await request.json();
+    const { doc_id, notes } = body;
+
+    const doc = docsStore.find((d) => d.id === doc_id && d.case_id === caseId);
+    if (!doc) {
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
+    }
+
+    doc.notes = typeof notes === "string" ? notes.trim() : "";
+    doc.notes_updated_at = new Date().toISOString();
+
+    return NextResponse.json({
+      success: true,
+      doc_id: doc.id,
+      notes: doc.notes,
+      notes_updated_at: doc.notes_updated_at,
+      doc,
+    });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to update document notes" }, { status: 400 });
+  }
+}
