@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth";
+import { LoginView } from "@/components/LoginView";
 
 export default function Dashboard() {
   const auth = useAuth() as any;
   const token = auth?.token;
   const user = auth?.user;
   const handleLogout = () => {
-    if (typeof auth?.logout === "function") auth.logout();
-    else window.location.href = "/";
+    if (typeof auth?.logout === "function") {
+      auth.logout();
+    }
   };
 
   const [cases, setCases] = useState<any[]>([]);
@@ -183,10 +185,6 @@ export default function Dashboard() {
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2500);
     }
-  };
-
-  const handleAskAboutPrecedent = (topic: string) => {
-    setChatInput(`Gætirðu útskýrt hvernig ${topic} tengist málinu okkar og hvaða kröfur leiðir af því?`);
   };
 
   const fetchCases = async () => {
@@ -371,13 +369,11 @@ export default function Dashboard() {
     }
   };
 
-  const handleSendChat = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim() || askingAi) return;
-    const query = chatInput;
+  const sendQueryToAi = async (queryText: string) => {
+    if (!queryText.trim() || askingAi) return;
     setChatInput("");
     setUserHasScrolledUp(false);
-    setChatMessages((prev) => [...prev, { sender: "user", text: query }]);
+    setChatMessages((prev) => [...prev, { sender: "user", text: queryText }]);
     setAskingAi(true);
     setTimeout(() => {
       chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -386,7 +382,7 @@ export default function Dashboard() {
       const res = await fetch("/api/v1/ai/chat", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ case_id: selectedCaseId, message: query }),
+        body: JSON.stringify({ case_id: selectedCaseId, message: queryText }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -400,6 +396,11 @@ export default function Dashboard() {
             inference_source: data.inference_source,
           },
         ]);
+      } else {
+        setChatMessages((p) => [
+          ...p,
+          { sender: "ai", text: "Villa kom upp við úrvinnslu lögfræðiaðstoðar." },
+        ]);
       }
     } catch {
       setChatMessages((p) => [
@@ -410,11 +411,32 @@ export default function Dashboard() {
     setAskingAi(false);
   };
 
+  const handleSendChat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || askingAi) return;
+    const query = chatInput;
+    sendQueryToAi(query);
+  };
+
+  const handleAskAboutPrecedent = (topic: string, type: "precedent" | "statute", title?: string) => {
+    const activeCase = cases.find((c) => c.id === selectedCaseId);
+    const caseNum = activeCase ? activeCase.case_number : "málinu";
+    const promptText =
+      type === "precedent"
+        ? `Hvernig tengist dómafordæmið ${topic} (${title || ""}) máli ${caseNum} og hvaða þýðingu hefur niðurstaðan fyrir málstað okkar?`
+        : `Hvaða þýðingu hefur lagaákvæðið ${topic} (${title || ""}) fyrir mál ${caseNum} og hver eru réttaráhrif þess?`;
+    sendQueryToAi(promptText);
+  };
+
   const filteredCases = cases.filter(
     (c) =>
       c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.case_number.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (!user || !auth?.isAuthenticated) {
+    return <LoginView />;
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#f8fafc" }}>
@@ -492,23 +514,29 @@ export default function Dashboard() {
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
           {/* Keycloak Persona Switcher */}
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <span style={{ fontSize: "0.75rem", color: "#64748b" }}>Innskráður:</span>
+            <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Innskráður:</span>
             <select
-              value={user?.email === "judge@ilcms.is" ? "judge" : user?.email === "paralegal@ilcms.is" ? "paralegal" : "lawyer"}
-              onChange={(e) => auth?.switchUser && auth.switchUser(e.target.value as any)}
+              value={user?.role?.toLowerCase() || "lawyer"}
+              onChange={(e) => {
+                if (auth?.switchUser) auth.switchUser(e.target.value);
+                else if (auth?.login) auth.login(e.target.value);
+              }}
               style={{
                 background: "#1e293b",
                 color: "#f8fafc",
                 border: "1px solid #334155",
                 borderRadius: "4px",
-                padding: "3px 8px",
+                padding: "4px 8px",
                 fontSize: "0.78rem",
                 cursor: "pointer",
+                fontWeight: 500,
               }}
+              title="Skipta um Keycloak OIDC prófíl"
             >
-              <option value="lawyer">Guðrún Sigurðardóttir hrl. (Lögmaður)</option>
-              <option value="judge">Jón Þórðarson (Dómari)</option>
-              <option value="paralegal">Ásta Einarsdóttir (Aðstoðarmaður)</option>
+              <option value="lawyer">⚖️ Guðrún Sigurðardóttir hrl. (Lögmaður)</option>
+              <option value="judge">🏛️ Jón Þórðarson (Dómari)</option>
+              <option value="paralegal">📋 Ásta Einarsdóttir (Aðstoðarmaður)</option>
+              <option value="admin">🛡️ Kerfisstjóri ILCMS (Kerfisstjóri)</option>
             </select>
           </div>
           <button
@@ -529,18 +557,36 @@ export default function Dashboard() {
             ⚙️ Innviðir
           </button>
           <button
+            id="btn-header-logout"
             onClick={handleLogout}
             style={{
-              padding: "4px 8px",
+              padding: "4px 10px",
               background: "#334155",
-              color: "#cbd5e1",
+              color: "#f1f5f9",
               border: "1px solid #475569",
               borderRadius: "4px",
               cursor: "pointer",
               fontSize: "0.75rem",
+              fontWeight: 500,
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              transition: "all 0.15s ease",
             }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = "#b91c1c";
+              e.currentTarget.style.borderColor = "#ef4444";
+              e.currentTarget.style.color = "#ffffff";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = "#334155";
+              e.currentTarget.style.borderColor = "#475569";
+              e.currentTarget.style.color = "#f1f5f9";
+            }}
+            title="Útskrá úr ILCMS (Loka Keycloak OIDC setu)"
           >
-            Útskrá
+            <span>🚪</span>
+            <span>Útskrá</span>
           </button>
         </div>
       </header>
@@ -844,13 +890,13 @@ export default function Dashboard() {
                               setDocCopied(false);
                             }}
                             style={{
-                              padding: "12px 14px",
+                              padding: "14px 16px",
                               borderRadius: "8px",
                               background: "#f8fafc",
                               border: "1px solid #e2e8f0",
                               display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
+                              flexDirection: "column",
+                              gap: "10px",
                               cursor: "pointer",
                               transition: "all 0.15s ease",
                             }}
@@ -863,8 +909,8 @@ export default function Dashboard() {
                               e.currentTarget.style.background = "#f8fafc";
                             }}
                           >
-                            <div style={{ flex: 1, marginRight: "12px" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "3px" }}>
+                            <div style={{ width: "100%", minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px", marginBottom: "3px" }}>
                                 <span style={{ fontWeight: 600, fontSize: "0.92rem", color: "#1e293b" }}>
                                   📄 {d.title}
                                 </span>
@@ -876,6 +922,7 @@ export default function Dashboard() {
                                     padding: "1px 6px",
                                     borderRadius: "4px",
                                     fontWeight: 500,
+                                    whiteSpace: "nowrap",
                                   }}
                                 >
                                   {d.doc_type}
@@ -902,27 +949,53 @@ export default function Dashboard() {
                                     background: "#fffbeb",
                                     border: "1px solid #fde68a",
                                     borderRadius: "6px",
-                                    padding: "5px 10px",
+                                    padding: "6px 10px",
                                     fontSize: "0.77rem",
                                     color: "#92400e",
                                     display: "flex",
-                                    alignItems: "center",
+                                    alignItems: "flex-start",
                                     gap: "6px",
                                     cursor: "pointer",
+                                    width: "100%",
+                                    maxWidth: "100%",
+                                    boxSizing: "border-box",
                                   }}
                                   title="Smelltu til að skoða eða breyta athugasemd"
                                 >
-                                  <span style={{ fontWeight: 700, fontSize: "0.8rem", whiteSpace: "nowrap" }}>📝 Athugasemd:</span>
-                                  <span style={{ fontStyle: "italic", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  <span style={{ fontWeight: 700, fontSize: "0.8rem", whiteSpace: "nowrap", flexShrink: 0 }}>
+                                    📝 Athugasemd:
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontStyle: "italic",
+                                      flex: 1,
+                                      minWidth: 0,
+                                      whiteSpace: "pre-wrap",
+                                      wordBreak: "break-word",
+                                      overflowWrap: "anywhere",
+                                      lineHeight: 1.45,
+                                    }}
+                                  >
                                     {d.notes}
                                   </span>
-                                  <span style={{ fontSize: "0.7rem", color: "#b45309", fontWeight: 600, textDecoration: "underline", whiteSpace: "nowrap" }}>
+                                  <span
+                                    style={{
+                                      fontSize: "0.7rem",
+                                      color: "#b45309",
+                                      fontWeight: 600,
+                                      textDecoration: "underline",
+                                      whiteSpace: "nowrap",
+                                      flexShrink: 0,
+                                      alignSelf: "flex-start",
+                                      marginTop: "1px",
+                                    }}
+                                  >
                                     Skoða / Breyta
                                   </span>
                                 </div>
                               )}
                             </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "8px", flexWrap: "wrap", width: "100%", marginTop: "2px" }}>
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -1036,354 +1109,6 @@ export default function Dashboard() {
                       </div>
                     )}
                   </div>
-
-                  {/* DOCUMENT VIEWER MODAL / DÓMASKJALALESARI */}
-                  {selectedDoc && (
-                    <div
-                      style={{
-                        position: "fixed",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: "rgba(15, 23, 42, 0.7)",
-                        backdropFilter: "blur(4px)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        zIndex: 1000,
-                        padding: "16px",
-                      }}
-                      onClick={() => setSelectedDoc(null)}
-                    >
-                      <div
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                          background: "#fff",
-                          borderRadius: "10px",
-                          width: "100%",
-                          maxWidth: "860px",
-                          maxHeight: "90vh",
-                          display: "flex",
-                          flexDirection: "column",
-                          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
-                          border: "1px solid #cbd5e1",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {/* Header */}
-                        <div
-                          style={{
-                            padding: "14px 18px",
-                            background: "#0f172a",
-                            color: "#fff",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            borderBottom: "1px solid #334155",
-                          }}
-                        >
-                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                            <span style={{ fontSize: "1.2rem" }}>⚖️</span>
-                            <div>
-                              <div style={{ fontWeight: 700, fontSize: "0.98rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                                {selectedDoc.title}
-                                <span style={{ background: "#2563eb", color: "#fff", fontSize: "0.68rem", padding: "2px 6px", borderRadius: "3px" }}>
-                                  {selectedDoc.doc_type}
-                                </span>
-                              </div>
-                              <div style={{ fontSize: "0.74rem", color: "#94a3b8" }}>
-                                Dómaskjal í máli {activeCase?.case_number} • {selectedDoc.page_count} blaðsíður • Skráð {selectedDoc.filing_date || selectedDoc.created_at?.split("T")[0]}
-                              </div>
-                            </div>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <button
-                              type="button"
-                              onClick={() => openNotesModal(selectedDoc)}
-                              title={selectedDoc.notes ? "Skoða eða breyta athugasemd" : "Bæta við athugasemd"}
-                              style={{
-                                background: selectedDoc.notes ? "#fef3c7" : "#334155",
-                                color: selectedDoc.notes ? "#92400e" : "#fff",
-                                border: selectedDoc.notes ? "1px solid #f59e0b" : "1px solid #475569",
-                                borderRadius: "4px",
-                                padding: "5px 10px",
-                                fontSize: "0.75rem",
-                                fontWeight: 600,
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "4px",
-                              }}
-                            >
-                              📝 {selectedDoc.notes ? "Athugasemdir" : "+ Athugasemd"}
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (selectedDoc?.content) {
-                                  navigator.clipboard.writeText(selectedDoc.content);
-                                  setDocCopied(true);
-                                  setTimeout(() => setDocCopied(false), 2000);
-                                }
-                              }}
-                              style={{
-                                background: docCopied ? "#16a34a" : "#334155",
-                                color: "#fff",
-                                border: "none",
-                                borderRadius: "4px",
-                                padding: "5px 10px",
-                                fontSize: "0.75rem",
-                                cursor: "pointer",
-                              }}
-                            >
-                              {docCopied ? "✓ Afritað" : "📋 Afrita texta"}
-                            </button>
-                            <button
-                              onClick={() => setSelectedDoc(null)}
-                              style={{
-                                background: "transparent",
-                                color: "#94a3b8",
-                                border: "none",
-                                fontSize: "1.2rem",
-                                cursor: "pointer",
-                                padding: "4px 8px",
-                                lineHeight: 1,
-                              }}
-                              title="Loka"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Search & Metadata Ribbon */}
-                        <div
-                          style={{
-                            padding: "10px 18px",
-                            background: "#f8fafc",
-                            borderBottom: "1px solid #e2e8f0",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            gap: "12px",
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, minWidth: "220px" }}>
-                            <span style={{ fontSize: "0.85rem", color: "#64748b" }}>🔍</span>
-                            <input
-                              type="text"
-                              placeholder="Leita að orði eða hugtaki í skjalinu..."
-                              value={docSearchQuery}
-                              onChange={(e) => setDocSearchQuery(e.target.value)}
-                              style={{
-                                width: "100%",
-                                padding: "5px 8px",
-                                fontSize: "0.82rem",
-                                border: "1px solid #cbd5e1",
-                                borderRadius: "4px",
-                                outline: "none",
-                              }}
-                            />
-                            {docSearchQuery && (
-                              <button
-                                onClick={() => setDocSearchQuery("")}
-                                style={{ background: "transparent", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "0.8rem" }}
-                              >
-                                ✕
-                              </button>
-                            )}
-                          </div>
-                          <div style={{ fontSize: "0.74rem", color: "#64748b", display: "flex", gap: "10px" }}>
-                            <span>Höfundur: <strong>{selectedDoc.author || "Málsaðili"}</strong></span>
-                            <span>Staða: <strong style={{ color: "#16a34a" }}>{selectedDoc.status}</strong></span>
-                            <span>RAG Vigrað: <strong>pgvector 768d</strong></span>
-                          </div>
-                        </div>
-
-                        {/* Document Content Viewport */}
-                        <div
-                          style={{
-                            padding: "24px 30px",
-                            overflowY: "auto",
-                            flex: 1,
-                            background: "#f1f5f9",
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                          }}
-                        >
-                          {selectedDoc.notes && selectedDoc.notes.trim().length > 0 && (
-                            <div
-                              style={{
-                                width: "100%",
-                                maxWidth: "760px",
-                                marginBottom: "16px",
-                                background: "#fffbeb",
-                                border: "1px solid #fde68a",
-                                borderRadius: "6px",
-                                padding: "12px 16px",
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "flex-start",
-                                gap: "12px",
-                                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                              }}
-                            >
-                              <div style={{ flex: 1 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
-                                  <span style={{ fontSize: "1rem" }}>📝</span>
-                                  <strong style={{ fontSize: "0.86rem", color: "#92400e" }}>Athugasemd við málsskjal:</strong>
-                                  {selectedDoc.notes_updated_at && (
-                                    <span style={{ fontSize: "0.72rem", color: "#b45309" }}>
-                                      (uppfært {new Date(selectedDoc.notes_updated_at).toLocaleDateString("is-IS")})
-                                    </span>
-                                  )}
-                                </div>
-                                <div style={{ fontSize: "0.86rem", color: "#78350f", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
-                                  {selectedDoc.notes}
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => openNotesModal(selectedDoc)}
-                                style={{
-                                  background: "#fef3c7",
-                                  color: "#92400e",
-                                  border: "1px solid #f59e0b",
-                                  borderRadius: "4px",
-                                  padding: "5px 10px",
-                                  fontSize: "0.75rem",
-                                  fontWeight: 600,
-                                  cursor: "pointer",
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                Breyta
-                              </button>
-                            </div>
-                          )}
-
-                          <div
-                            style={{
-                              background: "#fff",
-                              width: "100%",
-                              maxWidth: "760px",
-                              padding: "36px 40px",
-                              borderRadius: "4px",
-                              boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
-                              border: "1px solid #e2e8f0",
-                              fontFamily: "'Times New Roman', Times, serif, Georgia",
-                              lineHeight: 1.65,
-                              color: "#0f172a",
-                              fontSize: "0.95rem",
-                              whiteSpace: "pre-wrap",
-                            }}
-                          >
-                            {/* Official Court Document Stamp */}
-                            <div
-                              style={{
-                                borderBottom: "2px double #0f172a",
-                                paddingBottom: "12px",
-                                marginBottom: "20px",
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "flex-start",
-                                fontFamily: "sans-serif",
-                              }}
-                            >
-                              <div>
-                                <div style={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: "#1e293b" }}>
-                                  Héraðsdómur Reykjavíkur • Málsskjöl
-                                </div>
-                                <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#2563eb", marginTop: "2px" }}>
-                                  Mál nr. {activeCase?.case_number}
-                                </div>
-                              </div>
-                              <div
-                                style={{
-                                  border: "1px solid #0f172a",
-                                  padding: "3px 8px",
-                                  fontSize: "0.7rem",
-                                  fontWeight: 700,
-                                  textTransform: "uppercase",
-                                  textAlign: "center",
-                                  background: "#f8fafc",
-                                }}
-                              >
-                                Lagt fram í dómþingi<br />
-                                {selectedDoc.filing_date || selectedDoc.created_at?.split("T")[0]}
-                              </div>
-                            </div>
-
-                            {/* Document Text */}
-                            {selectedDoc.content ? (
-                              docSearchQuery.trim() ? (
-                                (() => {
-                                  const text = selectedDoc.content;
-                                  const q = docSearchQuery.trim();
-                                  const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
-                                  const parts = text.split(regex);
-                                  return (
-                                    <div>
-                                      {parts.map((part: string, i: number) =>
-                                        regex.test(part) ? (
-                                          <mark key={i} style={{ background: "#fef08a", color: "#854d0e", padding: "1px 2px", borderRadius: "2px" }}>
-                                            {part}
-                                          </mark>
-                                        ) : (
-                                          <span key={i}>{part}</span>
-                                        )
-                                      )}
-                                    </div>
-                                  );
-                                })()
-                              ) : (
-                                selectedDoc.content
-                              )
-                            ) : (
-                              <div style={{ textAlign: "center", color: "#94a3b8", padding: "40px 0", fontFamily: "sans-serif" }}>
-                                📄 Ekkert textainnihald fannst fyrir þetta skjal.
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div
-                          style={{
-                            padding: "10px 18px",
-                            background: "#fff",
-                            borderTop: "1px solid #e2e8f0",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            fontSize: "0.76rem",
-                            color: "#64748b",
-                          }}
-                        >
-                          <div>
-                            ILCMS Air-Gapped Case Management System • Ótengt innra net
-                          </div>
-                          <button
-                            onClick={() => setSelectedDoc(null)}
-                            style={{
-                              background: "#0f172a",
-                              color: "#fff",
-                              border: "none",
-                              borderRadius: "4px",
-                              padding: "6px 14px",
-                              fontSize: "0.78rem",
-                              cursor: "pointer",
-                              fontWeight: 500,
-                            }}
-                          >
-                            Loka glugga
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -1915,7 +1640,7 @@ export default function Dashboard() {
                                 </span>
                               </div>
                               <button
-                                onClick={() => handleAskAboutPrecedent(p.case_reference)}
+                                onClick={() => handleAskAboutPrecedent(p.case_reference, "precedent", p.parties)}
                                 style={{
                                   background: "#f1f5f9",
                                   border: "1px solid #cbd5e1",
@@ -1965,7 +1690,7 @@ export default function Dashboard() {
                                 {s.act_name} {s.act_number} — {s.article} ({s.title})
                               </span>
                               <button
-                                onClick={() => handleAskAboutPrecedent(`${s.article} ${s.act_name}`)}
+                                onClick={() => handleAskAboutPrecedent(`${s.article} laga nr. ${s.act_number}`, "statute", `${s.title} (${s.act_name})`)}
                                 style={{
                                   background: "#fff",
                                   border: "1px solid #86efac",
@@ -2199,18 +1924,32 @@ export default function Dashboard() {
                   >
                     <span style={{ fontWeight: 600 }}>📌 Tilvísun í málsskjöl:</span>
                     {m.citations.map((c: any, ci: number) => {
-                      const matchedDoc = docs.find(
-                        (d) =>
-                          d.title.toLowerCase().includes(c.citation_key.toLowerCase()) ||
-                          c.citation_key.toLowerCase().includes(d.title.slice(0, 15).toLowerCase())
-                      );
+                      const cleanCitation = (c.citation_key || "")
+                        .replace(/\.\.\.$/, "")
+                        .replace(/\.pdf$/i, "")
+                        .trim()
+                        .toLowerCase();
+                      const matchedDoc = docs.find((d) => {
+                        const cleanTitle = (d.title || "")
+                          .replace(/\.pdf$/i, "")
+                          .trim()
+                          .toLowerCase();
+                        return (
+                          cleanTitle.includes(cleanCitation) ||
+                          cleanCitation.includes(cleanTitle.slice(0, 15)) ||
+                          (cleanCitation.length > 5 && cleanTitle.slice(0, 15).includes(cleanCitation.slice(0, 15))) ||
+                          (d.doc_type && cleanCitation.includes(d.doc_type.toLowerCase()))
+                        );
+                      });
                       return (
-                        <div key={ci} style={{ marginTop: "3px", fontStyle: "italic", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
+                        <div key={ci} style={{ marginTop: "4px", fontStyle: "italic", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
                           <span>• {c.citation_key}: {c.excerpt}</span>
-                          {matchedDoc && (
+                          {matchedDoc ? (
                             <button
                               type="button"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveTab("docs");
                                 setSelectedDoc(matchedDoc);
                                 setDocSearchQuery("");
                                 setDocCopied(false);
@@ -2218,16 +1957,51 @@ export default function Dashboard() {
                               style={{
                                 background: m.sender === "user" ? "rgba(255,255,255,0.2)" : "#eff6ff",
                                 color: m.sender === "user" ? "#fff" : "#2563eb",
-                                border: "none",
+                                border: "1px solid #bfdbfe",
+                                borderRadius: "4px",
+                                padding: "2px 8px",
+                                fontSize: "0.72rem",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                                fontWeight: 600,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "3px",
+                                transition: "all 0.15s ease",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "#dbeafe";
+                                e.currentTarget.style.borderColor = "#60a5fa";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = m.sender === "user" ? "rgba(255,255,255,0.2)" : "#eff6ff";
+                                e.currentTarget.style.borderColor = "#bfdbfe";
+                              }}
+                              title="Opna og lesa skjalið í dómaskjalalesara"
+                            >
+                              👁️ Lesa ↗
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveTab("law");
+                              }}
+                              style={{
+                                background: m.sender === "user" ? "rgba(255,255,255,0.2)" : "#f8fafc",
+                                color: m.sender === "user" ? "#fff" : "#475569",
+                                border: "1px solid #cbd5e1",
                                 borderRadius: "4px",
                                 padding: "2px 7px",
                                 fontSize: "0.7rem",
                                 cursor: "pointer",
                                 whiteSpace: "nowrap",
-                                fontWeight: 600,
+                                fontWeight: 500,
                               }}
+                              title="Skoða í laga- og dómasafni"
                             >
-                              Lesa ↗
+                              ⚖️ Skoða ↗
                             </button>
                           )}
                         </div>
@@ -2821,6 +2595,354 @@ export default function Dashboard() {
                   {savingNote ? "Vistar..." : "Vista athugasemd"}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DOCUMENT VIEWER MODAL / DÓMASKJALALESARI (Global overlay, accessible from anywhere) */}
+      {selectedDoc && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.75)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9990,
+            padding: "16px",
+          }}
+          onClick={() => setSelectedDoc(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: "10px",
+              width: "100%",
+              maxWidth: "860px",
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.35)",
+              border: "1px solid #cbd5e1",
+              overflow: "hidden",
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: "14px 18px",
+                background: "#0f172a",
+                color: "#fff",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderBottom: "1px solid #334155",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "1.2rem" }}>⚖️</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "0.98rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    {selectedDoc.title}
+                    <span style={{ background: "#2563eb", color: "#fff", fontSize: "0.68rem", padding: "2px 6px", borderRadius: "3px" }}>
+                      {selectedDoc.doc_type}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "0.74rem", color: "#94a3b8" }}>
+                    Dómaskjal í máli {activeCase?.case_number} • {selectedDoc.page_count} blaðsíður • Skráð {selectedDoc.filing_date || selectedDoc.created_at?.split("T")[0]}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <button
+                  type="button"
+                  onClick={() => openNotesModal(selectedDoc)}
+                  title={selectedDoc.notes ? "Skoða eða breyta athugasemd" : "Bæta við athugasemd"}
+                  style={{
+                    background: selectedDoc.notes ? "#fef3c7" : "#334155",
+                    color: selectedDoc.notes ? "#92400e" : "#fff",
+                    border: selectedDoc.notes ? "1px solid #f59e0b" : "1px solid #475569",
+                    borderRadius: "4px",
+                    padding: "5px 10px",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  📝 {selectedDoc.notes ? "Athugasemdir" : "+ Athugasemd"}
+                </button>
+                <button
+                  onClick={() => {
+                    if (selectedDoc?.content) {
+                      navigator.clipboard.writeText(selectedDoc.content);
+                      setDocCopied(true);
+                      setTimeout(() => setDocCopied(false), 2000);
+                    }
+                  }}
+                  style={{
+                    background: docCopied ? "#16a34a" : "#334155",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "4px",
+                    padding: "5px 10px",
+                    fontSize: "0.75rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  {docCopied ? "✓ Afritað" : "📋 Afrita texta"}
+                </button>
+                <button
+                  onClick={() => setSelectedDoc(null)}
+                  style={{
+                    background: "transparent",
+                    color: "#94a3b8",
+                    border: "none",
+                    fontSize: "1.2rem",
+                    cursor: "pointer",
+                    padding: "4px 8px",
+                    lineHeight: 1,
+                  }}
+                  title="Loka"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Search & Metadata Ribbon */}
+            <div
+              style={{
+                padding: "10px 18px",
+                background: "#f8fafc",
+                borderBottom: "1px solid #e2e8f0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "12px",
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, minWidth: "220px" }}>
+                <span style={{ fontSize: "0.85rem", color: "#64748b" }}>🔍</span>
+                <input
+                  type="text"
+                  placeholder="Leita að orði eða hugtaki í skjalinu..."
+                  value={docSearchQuery}
+                  onChange={(e) => setDocSearchQuery(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "5px 8px",
+                    fontSize: "0.82rem",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "4px",
+                    outline: "none",
+                  }}
+                />
+                {docSearchQuery && (
+                  <button
+                    onClick={() => setDocSearchQuery("")}
+                    style={{ background: "transparent", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "0.8rem" }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <div style={{ fontSize: "0.74rem", color: "#64748b", display: "flex", gap: "10px" }}>
+                <span>Höfundur: <strong>{selectedDoc.author || "Málsaðili"}</strong></span>
+                <span>Staða: <strong style={{ color: "#16a34a" }}>{selectedDoc.status}</strong></span>
+                <span>RAG Vigrað: <strong>pgvector 768d</strong></span>
+              </div>
+            </div>
+
+            {/* Document Content Viewport */}
+            <div
+              style={{
+                padding: "24px 30px",
+                overflowY: "auto",
+                flex: 1,
+                background: "#f1f5f9",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+              }}
+            >
+              {selectedDoc.notes && selectedDoc.notes.trim().length > 0 && (
+                <div
+                  style={{
+                    width: "100%",
+                    maxWidth: "760px",
+                    marginBottom: "16px",
+                    background: "#fffbeb",
+                    border: "1px solid #fde68a",
+                    borderRadius: "6px",
+                    padding: "12px 16px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    gap: "12px",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+                      <span style={{ fontSize: "1rem" }}>📝</span>
+                      <strong style={{ fontSize: "0.86rem", color: "#92400e" }}>Athugasemd við málsskjal:</strong>
+                      {selectedDoc.notes_updated_at && (
+                        <span style={{ fontSize: "0.72rem", color: "#b45309" }}>
+                          (uppfært {new Date(selectedDoc.notes_updated_at).toLocaleDateString("is-IS")})
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: "0.86rem", color: "#78350f", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+                      {selectedDoc.notes}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openNotesModal(selectedDoc)}
+                    style={{
+                      background: "#fef3c7",
+                      color: "#92400e",
+                      border: "1px solid #f59e0b",
+                      borderRadius: "4px",
+                      padding: "5px 10px",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Breyta
+                  </button>
+                </div>
+              )}
+
+              <div
+                style={{
+                  background: "#fff",
+                  width: "100%",
+                  maxWidth: "760px",
+                  padding: "36px 40px",
+                  borderRadius: "4px",
+                  boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
+                  border: "1px solid #e2e8f0",
+                  fontFamily: "'Times New Roman', Times, serif, Georgia",
+                  lineHeight: 1.65,
+                  color: "#0f172a",
+                  fontSize: "0.95rem",
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {/* Official Court Document Stamp */}
+                <div
+                  style={{
+                    borderBottom: "2px double #0f172a",
+                    paddingBottom: "12px",
+                    marginBottom: "20px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    fontFamily: "sans-serif",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: "#1e293b" }}>
+                      Héraðsdómur Reykjavíkur • Málsskjöl
+                    </div>
+                    <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#2563eb", marginTop: "2px" }}>
+                      Mál nr. {activeCase?.case_number}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      border: "1px solid #0f172a",
+                      padding: "3px 8px",
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      textAlign: "center",
+                      background: "#f8fafc",
+                    }}
+                  >
+                    Lagt fram í dómþingi<br />
+                    {selectedDoc.filing_date || selectedDoc.created_at?.split("T")[0]}
+                  </div>
+                </div>
+
+                {/* Document Text */}
+                {selectedDoc.content ? (
+                  docSearchQuery.trim() ? (
+                    (() => {
+                      const text = selectedDoc.content;
+                      const q = docSearchQuery.trim();
+                      const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+                      const parts = text.split(regex);
+                      return (
+                        <div>
+                          {parts.map((part: string, i: number) =>
+                            regex.test(part) ? (
+                              <mark key={i} style={{ background: "#fef08a", color: "#854d0e", padding: "1px 2px", borderRadius: "2px" }}>
+                                {part}
+                              </mark>
+                            ) : (
+                              <span key={i}>{part}</span>
+                            )
+                          )}
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    selectedDoc.content
+                  )
+                ) : (
+                  <div style={{ textAlign: "center", color: "#94a3b8", padding: "40px 0", fontFamily: "sans-serif" }}>
+                    📄 Ekkert textainnihald fannst fyrir þetta skjal.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div
+              style={{
+                padding: "10px 18px",
+                background: "#fff",
+                borderTop: "1px solid #e2e8f0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                fontSize: "0.76rem",
+                color: "#64748b",
+              }}
+            >
+              <div>
+                ILCMS Air-Gapped Case Management System • Ótengt innra net
+              </div>
+              <button
+                onClick={() => setSelectedDoc(null)}
+                style={{
+                  background: "#0f172a",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "4px",
+                  padding: "6px 14px",
+                  fontSize: "0.78rem",
+                  cursor: "pointer",
+                  fontWeight: 500,
+                }}
+              >
+                Loka glugga
+              </button>
             </div>
           </div>
         </div>
