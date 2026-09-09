@@ -24,6 +24,7 @@ export interface User {
   name: string;
   email: string;
   role: "LAWYER" | "JUDGE" | "PARALEGAL" | "ADMIN";
+  title?: string;
 }
 
 interface AuthContextType {
@@ -31,6 +32,7 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   login: (role?: "LAWYER" | "JUDGE" | "PARALEGAL" | "ADMIN") => void;
+  loginWithCredentials: (username: string, password?: string) => { success: boolean; error?: string };
   logout: () => void;
 }
 
@@ -39,10 +41,11 @@ const AuthContext = createContext<AuthContextType>({
   token: null,
   isAuthenticated: false,
   login: () => {},
+  loginWithCredentials: () => ({ success: false }),
   logout: () => {},
 });
 
-const DEMO_USERS: Record<string, User> = {
+export const DEMO_USERS: Record<string, User> = {
   LAWYER: {
     id: "usr-lawyer-01",
     name: "Guðrún Sigurðardóttir hrl.",
@@ -78,6 +81,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(`jwt-token-${role.toLowerCase()}-${Date.now()}`);
   };
 
+  const loginWithCredentials = (username: string, _password?: string): { success: boolean; error?: string } => {
+    const trimmed = username.toLowerCase().trim();
+    let foundRole: "LAWYER" | "JUDGE" | "PARALEGAL" | "ADMIN" = "LAWYER";
+
+    if (trimmed.includes("judge") || trimmed.includes("domari") || trimmed.includes("dómari") || trimmed.includes("jon")) {
+      foundRole = "JUDGE";
+    } else if (trimmed.includes("paralegal") || trimmed.includes("asta") || trimmed.includes("nemi")) {
+      foundRole = "PARALEGAL";
+    } else if (trimmed.includes("admin") || trimmed.includes("kerfisstjori")) {
+      foundRole = "ADMIN";
+    } else {
+      foundRole = "LAWYER";
+    }
+
+    setUser(DEMO_USERS[foundRole] || DEMO_USERS.LAWYER);
+    setToken(`jwt-token-${foundRole.toLowerCase()}-${Date.now()}`);
+    return { success: true };
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -90,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token,
         isAuthenticated: !!user,
         login,
+        loginWithCredentials,
         logout,
       }}
     >
@@ -117,6 +140,23 @@ export interface CaseItem {
   created_at: string;
 }
 
+export interface DocumentVersion {
+  id: string;
+  version_number: number;
+  created_at: string;
+  author?: string;
+  change_summary?: string;
+  file_name?: string;
+  file_size?: number;
+  page_count: number;
+  content?: string;
+  is_pdf?: boolean;
+  pdf_data_url?: string;
+  is_docx?: boolean;
+  docx_data_url?: string;
+  html_content?: string;
+}
+
 export interface DocumentItem {
   id: string;
   case_id: string;
@@ -131,6 +171,14 @@ export interface DocumentItem {
   filing_date?: string;
   notes?: string;
   notes_updated_at?: string;
+  is_pdf?: boolean;
+  pdf_data_url?: string;
+  is_docx?: boolean;
+  docx_data_url?: string;
+  html_content?: string;
+  version?: number;
+  versions?: DocumentVersion[];
+  updated_at?: string;
 }
 
 export interface CaseDeadlineItem {
@@ -943,6 +991,140 @@ ${line}
 `;
 
   return `${header}\n${rows}\n${footer}`;
+}
+EOF
+fi
+
+if [ ! -f "src/lib/docxExtractor.ts" ]; then
+    echo "Restoring src/lib/docxExtractor.ts..."
+    cat <<'EOF' > src/lib/docxExtractor.ts
+import mammoth from "mammoth";
+import JSZip from "jszip";
+
+export interface DocxExtractionResult {
+  text: string;
+  html?: string;
+  pageCount: number;
+  wordCount: number;
+}
+
+export function isDocxBuffer(buffer: Buffer): boolean {
+  if (!buffer || buffer.length < 4) return false;
+  return buffer[0] === 0x50 && buffer[1] === 0x4b;
+}
+
+async function extractWithJSZip(buffer: Buffer): Promise<{ text: string; html?: string }> {
+  try {
+    const zip = await JSZip.loadAsync(buffer);
+    const docXmlFile = zip.file("word/document.xml");
+    if (!docXmlFile) {
+      return { text: "" };
+    }
+    const xmlContent = await docXmlFile.async("string");
+    
+    let processed = xmlContent
+      .replace(/<w:br[^>]*\/>/gi, "\n")
+      .replace(/<w:tab[^>]*\/>/gi, "\t")
+      .replace(/<\/w:p>/gi, "\n\n");
+
+    const textMatches = processed.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/gi);
+    if (!textMatches) {
+      const stripped = processed.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      return { text: stripped };
+    }
+
+    const textParts = textMatches.map((tag) => {
+      const match = tag.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/i);
+      return match ? match[1] : "";
+    });
+
+    const combinedText = textParts.join("").replace(/\n{3,}/g, "\n\n").trim();
+    return { text: combinedText };
+  } catch (err) {
+    console.warn("JSZip extraction failed:", err);
+    return { text: "" };
+  }
+}
+
+function extractFromRawDocxString(rawStr: string): string {
+  try {
+    const wtMatches = rawStr.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/gi);
+    if (wtMatches && wtMatches.length > 0) {
+      const clean = wtMatches
+        .map((tag) => {
+          const m = tag.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/i);
+          return m ? m[1] : "";
+        })
+        .join("")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .trim();
+      if (clean.length > 20) return clean;
+    }
+  } catch (err) {
+    console.warn("Raw string extraction failed:", err);
+  }
+  return "";
+}
+
+export async function extractTextFromDocx(
+  input: Buffer | Uint8Array | string
+): Promise<DocxExtractionResult> {
+  let buffer: Buffer;
+
+  if (typeof input === "string") {
+    buffer = Buffer.from(input, "binary");
+  } else if (Buffer.isBuffer(input)) {
+    buffer = input;
+  } else {
+    buffer = Buffer.from(input);
+  }
+
+  let text = "";
+  let html = "";
+
+  try {
+    const rawResult = await mammoth.extractRawText({ buffer });
+    if (rawResult && rawResult.value && rawResult.value.trim().length > 0) {
+      text = rawResult.value.trim();
+    }
+
+    const htmlResult = await mammoth.convertToHtml({ buffer });
+    if (htmlResult && htmlResult.value) {
+      html = htmlResult.value;
+    }
+  } catch (mammothErr) {
+    console.warn("Mammoth extraction encountered error, attempting fallback:", mammothErr);
+  }
+
+  if (!text || text.trim().length === 0) {
+    const zipResult = await extractWithJSZip(buffer);
+    if (zipResult.text && zipResult.text.length > 0) {
+      text = zipResult.text;
+    }
+  }
+
+  if ((!text || text.trim().length === 0) && typeof input === "string") {
+    const rawExtracted = extractFromRawDocxString(input);
+    if (rawExtracted && rawExtracted.length > 0) {
+      text = rawExtracted;
+    }
+  }
+
+  text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
+  const pageCount = Math.max(1, Math.ceil(wordCount / 300));
+
+  return {
+    text,
+    html: html || undefined,
+    pageCount,
+    wordCount,
+  };
 }
 EOF
 fi

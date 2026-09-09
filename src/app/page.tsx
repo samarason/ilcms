@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { LoginView } from "@/components/LoginView";
 
@@ -77,7 +77,125 @@ export default function Dashboard() {
   // Document Reader state
   const [selectedDoc, setSelectedDoc] = useState<any | null>(null);
   const [docSearchQuery, setDocSearchQuery] = useState("");
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
   const [docCopied, setDocCopied] = useState(false);
+  const [docViewMode, setDocViewMode] = useState<"text" | "pdf" | "formatted">("text");
+
+  // Document Versioning & Revision states
+  const [viewingVersion, setViewingVersion] = useState<any | null>(null);
+  const [versionHistoryDoc, setVersionHistoryDoc] = useState<any | null>(null);
+  const [uploadRevisionDoc, setUploadRevisionDoc] = useState<any | null>(null);
+  const [revisionFile, setRevisionFile] = useState<File | null>(null);
+  const [revisionNote, setRevisionNote] = useState("");
+  const [revisionAuthor, setRevisionAuthor] = useState("");
+  const [uploadingRevision, setUploadingRevision] = useState(false);
+  const [revisionError, setRevisionError] = useState("");
+  const [versionActionNotice, setVersionActionNotice] = useState("");
+  const [diffDoc, setDiffDoc] = useState<{ doc: any; vA: any; vB: any } | null>(null);
+
+  // Active document data: viewing historical version or current active document
+  const activeDocData = viewingVersion || selectedDoc;
+
+  // Display text: handles standard text, extracted PDF text, extracted DOCX text, and gracefully decodes legacy raw PDF/DOCX streams
+  const displayDocContent = useMemo(() => {
+    if (!activeDocData?.content) return "";
+    const raw = activeDocData.content;
+    if (raw.trim().startsWith("%PDF-")) {
+      // If raw PDF bytes or PostScript text streams reached the client
+      const lines: string[] = [];
+      const tjRegex = /\(((?:\\.|[^()\\])*)\)\s*(?:Tj|['"])/g;
+      let m: RegExpExecArray | null;
+      while ((m = tjRegex.exec(raw)) !== null) {
+        const decoded = m[1]
+          .replace(/\\([0-7]{1,3})/g, (_, oct) => String.fromCharCode(parseInt(oct, 8)))
+          .replace(/\\n/g, "\n")
+          .replace(/\\r/g, "\r")
+          .replace(/\\t/g, "\t")
+          .replace(/\\\(/g, "(")
+          .replace(/\\\)/g, ")")
+          .replace(/\\\\/g, "\\");
+        if (decoded.trim()) lines.push(decoded);
+      }
+      if (lines.length > 0) return lines.join("\n");
+      return "[PDF skjal móttekið í málasafn. Notaðu 'Upprunalegt PDF' hnappinn hér að ofan til að skoða skjalið í heild sinni.]";
+    }
+    if (
+      raw.startsWith("PK\x03\x04") ||
+      raw.startsWith("PK") ||
+      raw.includes("[Content_Types].xml") ||
+      raw.includes("word/document.xml")
+    ) {
+      // If raw DOCX bytes / zip string reached the client, extract <w:t> tags
+      const wtMatches = raw.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/gi);
+      if (wtMatches && wtMatches.length > 0) {
+        const text = wtMatches
+          .map((tag) => {
+            const match = tag.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/i);
+            return match ? match[1] : "";
+          })
+          .join("")
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .trim();
+        if (text) return text;
+      }
+      return "[Word skjal (.docx) móttekið í rafræna dómaskjalaskrá. Skjalið er aðgengilegt og texti þess er vistaður.]";
+    }
+    return raw;
+  }, [activeDocData?.content]);
+
+  // Compute total matches and search terms for document reader search
+  const docSearchResults = useMemo(() => {
+    if (!displayDocContent || !docSearchQuery.trim()) {
+      return { total: 0, terms: [] as string[], regex: null as RegExp | null };
+    }
+    const cleanQuery = docSearchQuery.trim();
+    const rawTerms = cleanQuery.split(/\s+/).filter(Boolean);
+    const terms = rawTerms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    if (terms.length === 0) return { total: 0, terms: [] as string[], regex: null };
+
+    try {
+      const regex = new RegExp(`(${terms.join("|")})`, "gi");
+      const matches = displayDocContent.match(regex);
+      return {
+        total: matches ? matches.length : 0,
+        terms,
+        regex,
+      };
+    } catch {
+      return { total: 0, terms: [] as string[], regex: null };
+    }
+  }, [displayDocContent, docSearchQuery]);
+
+  const totalDocMatches = docSearchResults.total;
+
+  // Reset match index when query or document changes
+  useEffect(() => {
+    setActiveMatchIndex(0);
+  }, [docSearchQuery, selectedDoc?.id]);
+
+  // Scroll active match into view smoothly
+  useEffect(() => {
+    if (docSearchQuery.trim() && totalDocMatches > 0) {
+      const el = document.getElementById(`doc-highlight-match-${activeMatchIndex}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [activeMatchIndex, docSearchQuery, totalDocMatches]);
+
+  const handleNextDocMatch = () => {
+    if (totalDocMatches <= 1) return;
+    setActiveMatchIndex((prev) => (prev + 1) % totalDocMatches);
+  };
+
+  const handlePrevDocMatch = () => {
+    if (totalDocMatches <= 1) return;
+    setActiveMatchIndex((prev) => (prev - 1 + totalDocMatches) % totalDocMatches);
+  };
 
   // Document Notes ("Athugasemdir") state
   const [activeNoteDoc, setActiveNoteDoc] = useState<any | null>(null);
@@ -271,6 +389,140 @@ export default function Dashboard() {
       fetchDocs(selectedCaseId);
     }
     setUploading(false);
+  };
+
+  const handleOpenUploadRevision = (doc: any) => {
+    setUploadRevisionDoc(doc);
+    setRevisionFile(null);
+    setRevisionNote("");
+    setRevisionAuthor(user?.name || "Guðrún Sigurðardóttir hrl.");
+    setRevisionError("");
+  };
+
+  const handleOpenVersionHistory = (doc: any) => {
+    setVersionHistoryDoc(doc);
+    setVersionActionNotice("");
+  };
+
+  const handleUploadRevisionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadRevisionDoc || !selectedCaseId) return;
+    setUploadingRevision(true);
+    setRevisionError("");
+
+    try {
+      const fd = new FormData();
+      if (revisionFile) {
+        fd.append("file", revisionFile);
+      }
+      const currentVer = uploadRevisionDoc.version || uploadRevisionDoc.versions?.length || 1;
+      fd.append("change_summary", revisionNote.trim() || `Endurskoðuð útgáfa v${currentVer + 1}`);
+      fd.append("author", revisionAuthor.trim() || user?.name || "Guðrún Sigurðardóttir hrl.");
+
+      const res = await fetch(
+        `/api/v1/cases/${selectedCaseId}/documents/${uploadRevisionDoc.id}/versions`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        setDocs((prevDocs) =>
+          prevDocs.map((d) => (d.id === uploadRevisionDoc.id ? data.doc : d))
+        );
+        if (selectedDoc && selectedDoc.id === uploadRevisionDoc.id) {
+          setSelectedDoc(data.doc);
+          setViewingVersion(null);
+        }
+        if (versionHistoryDoc && versionHistoryDoc.id === uploadRevisionDoc.id) {
+          setVersionHistoryDoc(data.doc);
+        }
+        setUploadRevisionDoc(null);
+        setRevisionFile(null);
+        setRevisionNote("");
+        setVersionActionNotice(`✓ Ný útgáfa v${data.doc.version} var skráð með góðum árangri!`);
+        setTimeout(() => setVersionActionNotice(""), 4000);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setRevisionError(errData.error || "Villa kom upp við að hlaða upp nýrri útgáfu.");
+      }
+    } catch {
+      setRevisionError("Villa í nettengingu.");
+    } finally {
+      setUploadingRevision(false);
+    }
+  };
+
+  const handleRestoreVersion = async (doc: any, ver: any) => {
+    if (!selectedCaseId || !doc || !ver) return;
+    try {
+      const res = await fetch(
+        `/api/v1/cases/${selectedCaseId}/documents/${doc.id}/restore`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            version_number: ver.version_number,
+            author: user?.name || "Guðrún Sigurðardóttir hrl.",
+          }),
+        }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        setDocs((prevDocs) =>
+          prevDocs.map((d) => (d.id === doc.id ? data.doc : d))
+        );
+        if (selectedDoc && selectedDoc.id === doc.id) {
+          setSelectedDoc(data.doc);
+          setViewingVersion(null);
+        }
+        if (versionHistoryDoc && versionHistoryDoc.id === doc.id) {
+          setVersionHistoryDoc(data.doc);
+        }
+        setVersionActionNotice(`✓ Útgáfa v${ver.version_number} var endurheimt sem ný virk útgáfa (v${data.doc.version})!`);
+        setTimeout(() => setVersionActionNotice(""), 4000);
+      }
+    } catch (err) {
+      console.error("Error restoring version:", err);
+    }
+  };
+
+  const handleDownloadVersion = (ver: any) => {
+    if (!ver) return;
+    const verNum = ver.version_number || ver.version || 1;
+    if (ver.pdf_data_url) {
+      const a = document.createElement("a");
+      a.href = ver.pdf_data_url;
+      a.download = ver.title?.endsWith(".pdf") ? ver.title : `${ver.title || "skjal"}_v${verNum}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else if (ver.docx_data_url) {
+      const a = document.createElement("a");
+      a.href = ver.docx_data_url;
+      a.download = ver.title?.endsWith(".docx") ? ver.title : `${ver.title || "skjal"}_v${verNum}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else {
+      const isDocx = ver.is_docx || ver.title?.toLowerCase().endsWith(".docx");
+      const blob = new Blob([ver.content || ""], { type: isDocx ? "application/msword" : "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = ver.title || `skjal_v${verNum}.${isDocx ? "docx" : "txt"}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
   };
 
   const openNotesModal = (doc: any) => {
@@ -827,10 +1079,11 @@ export default function Dashboard() {
                   >
                     <form
                       onSubmit={handleUploadDoc}
-                      style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}
+                      style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}
                     >
                       <input
                         type="file"
+                        accept=".pdf,.docx,.doc,.txt"
                         onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
                         style={{ fontSize: "0.85rem" }}
                       />
@@ -845,10 +1098,14 @@ export default function Dashboard() {
                           borderRadius: "4px",
                           cursor: "pointer",
                           fontSize: "0.85rem",
+                          fontWeight: 500,
                         }}
                       >
                         {uploading ? "Hleð..." : "Hlaða upp skjali í málasafn"}
                       </button>
+                      <span style={{ fontSize: "0.74rem", color: "#64748b" }}>
+                        Styður Word (.docx), PDF og textaskjöl
+                      </span>
                     </form>
                   </div>
 
@@ -881,6 +1138,24 @@ export default function Dashboard() {
                       <div style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Engin skjöl skráð á þetta mál.</div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {versionActionNotice && (
+                          <div
+                            style={{
+                              background: "#f0fdf4",
+                              border: "1px solid #86efac",
+                              color: "#166534",
+                              padding: "10px 14px",
+                              borderRadius: "6px",
+                              fontSize: "0.82rem",
+                              fontWeight: 600,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}
+                          >
+                            <span>{versionActionNotice}</span>
+                          </div>
+                        )}
                         {docs.map((d) => (
                           <div
                             key={d.id}
@@ -911,9 +1186,29 @@ export default function Dashboard() {
                           >
                             <div style={{ width: "100%", minWidth: 0 }}>
                               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px", marginBottom: "3px" }}>
-                                <span style={{ fontWeight: 600, fontSize: "0.92rem", color: "#1e293b" }}>
-                                  📄 {d.title}
-                                </span>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                                  <span style={{ fontWeight: 600, fontSize: "0.92rem", color: "#1e293b" }}>
+                                    📄 {d.title}
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: "0.7rem",
+                                      background: (d.version || (d.versions?.length || 1)) > 1 ? "#eff6ff" : "#f1f5f9",
+                                      color: (d.version || (d.versions?.length || 1)) > 1 ? "#1d4ed8" : "#475569",
+                                      border: `1px solid ${(d.version || (d.versions?.length || 1)) > 1 ? "#bfdbfe" : "#e2e8f0"}`,
+                                      padding: "1px 6px",
+                                      borderRadius: "4px",
+                                      fontWeight: 700,
+                                      whiteSpace: "nowrap",
+                                    }}
+                                    title={`Útgáfa ${d.version || (d.versions?.length || 1)}${(d.versions?.length || 1) > 1 ? ` (${d.versions?.length} útgáfur skráðar)` : ""}`}
+                                  >
+                                    v{d.version || (d.versions?.length || 1)}
+                                    {(d.versions?.length || 1) > 1 && (
+                                      <span style={{ marginLeft: "3px", fontSize: "0.65rem", opacity: 0.85 }}>({d.versions?.length} útg.)</span>
+                                    )}
+                                  </span>
+                                </div>
                                 <span
                                   style={{
                                     fontSize: "0.7rem",
@@ -1089,6 +1384,70 @@ export default function Dashboard() {
                                   <span>+</span> Athugasemd
                                 </button>
                               )}
+
+                              {/* Version history button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenVersionHistory(d);
+                                }}
+                                title="Skoða allar útgáfur og breytingasögu þessa málsskjals"
+                                style={{
+                                  background: (d.versions?.length || 1) > 1 ? "#eff6ff" : "#f8fafc",
+                                  color: (d.versions?.length || 1) > 1 ? "#1e40af" : "#475569",
+                                  border: `1px solid ${(d.versions?.length || 1) > 1 ? "#bfdbfe" : "#cbd5e1"}`,
+                                  borderRadius: "5px",
+                                  padding: "6px 11px",
+                                  fontSize: "0.78rem",
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  transition: "all 0.15s ease",
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = "#dbeafe";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = (d.versions?.length || 1) > 1 ? "#eff6ff" : "#f8fafc";
+                                }}
+                              >
+                                <span>🕒</span> Útgáfusaga {d.versions?.length && d.versions.length > 1 ? `(${d.versions.length})` : ""}
+                              </button>
+
+                              {/* Upload new revision button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenUploadRevision(d);
+                                }}
+                                title="Hlaða upp nýrri útgáfu af þessu skjali (t.d. endurskoðuð stefna, viðbótargögn)"
+                                style={{
+                                  background: "#f0fdf4",
+                                  color: "#166534",
+                                  border: "1px solid #bbf7d0",
+                                  borderRadius: "5px",
+                                  padding: "6px 11px",
+                                  fontSize: "0.78rem",
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  transition: "all 0.15s ease",
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = "#dcfce7";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = "#f0fdf4";
+                                }}
+                              >
+                                <span>⬆️</span> Ný útgáfa
+                              </button>
 
                               <span
                                 style={{
@@ -2649,18 +3008,212 @@ export default function Dashboard() {
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <span style={{ fontSize: "1.2rem" }}>⚖️</span>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: "0.98rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                    {selectedDoc.title}
+                  <div style={{ fontWeight: 700, fontSize: "0.98rem", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                    <span>{activeDocData.title}</span>
                     <span style={{ background: "#2563eb", color: "#fff", fontSize: "0.68rem", padding: "2px 6px", borderRadius: "3px" }}>
-                      {selectedDoc.doc_type}
+                      {activeDocData.doc_type}
+                    </span>
+                    <span
+                      style={{
+                        background: viewingVersion ? "#d97706" : "#2563eb",
+                        color: "#fff",
+                        fontSize: "0.68rem",
+                        padding: "2px 6px",
+                        borderRadius: "3px",
+                        fontWeight: 700,
+                      }}
+                      title={viewingVersion ? `Skoðar sögulega útgáfu v${viewingVersion.version_number}` : `Núverandi virk útgáfa v${selectedDoc.version || 1}`}
+                    >
+                      v{viewingVersion ? viewingVersion.version_number : (selectedDoc.version || 1)}
+                      {viewingVersion && " (SÖGULEG)"}
                     </span>
                   </div>
                   <div style={{ fontSize: "0.74rem", color: "#94a3b8" }}>
-                    Dómaskjal í máli {activeCase?.case_number} • {selectedDoc.page_count} blaðsíður • Skráð {selectedDoc.filing_date || selectedDoc.created_at?.split("T")[0]}
+                    Dómaskjal í máli {activeCase?.case_number} • {activeDocData.page_count} blaðsíður •{" "}
+                    {viewingVersion
+                      ? `Útgáfa skráð ${new Date(viewingVersion.created_at).toLocaleDateString("is-IS")} af ${viewingVersion.author || "höfundi"}`
+                      : `Skráð ${selectedDoc.filing_date || selectedDoc.created_at?.split("T")[0]}`}
                   </div>
                 </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                {/* View Mode Toggle for PDFs */}
+                {(activeDocData.is_pdf || activeDocData.pdf_data_url || activeDocData.title?.toLowerCase().endsWith(".pdf")) && (
+                  <div style={{ display: "flex", background: "#1e293b", padding: "2px", borderRadius: "5px", border: "1px solid #475569" }}>
+                    <button
+                      type="button"
+                      onClick={() => setDocViewMode("text")}
+                      style={{
+                        background: docViewMode === "text" ? "#2563eb" : "transparent",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "3px",
+                        padding: "4px 8px",
+                        fontSize: "0.72rem",
+                        fontWeight: docViewMode === "text" ? 600 : 400,
+                        cursor: "pointer",
+                      }}
+                      title="Skoða útdreginn texta með leitarorðaáherslu"
+                    >
+                      📜 Textasýn
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDocViewMode("pdf")}
+                      style={{
+                        background: docViewMode === "pdf" ? "#2563eb" : "transparent",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "3px",
+                        padding: "4px 8px",
+                        fontSize: "0.72rem",
+                        fontWeight: docViewMode === "pdf" ? 600 : 400,
+                        cursor: "pointer",
+                      }}
+                      title="Skoða skjalið í upprunalegum PDF lesara"
+                    >
+                      📄 PDF skoðari
+                    </button>
+                  </div>
+                )}
+
+                {/* View Mode Toggle for Word DOCX */}
+                {(activeDocData.is_docx || activeDocData.docx_data_url || activeDocData.title?.toLowerCase().endsWith(".docx")) && (
+                  <div style={{ display: "flex", background: "#1e293b", padding: "2px", borderRadius: "5px", border: "1px solid #475569" }}>
+                    <button
+                      type="button"
+                      onClick={() => setDocViewMode("text")}
+                      style={{
+                        background: docViewMode === "text" ? "#2563eb" : "transparent",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "3px",
+                        padding: "4px 8px",
+                        fontSize: "0.72rem",
+                        fontWeight: docViewMode === "text" ? 600 : 400,
+                        cursor: "pointer",
+                      }}
+                      title="Skoða texta með leitarorðaáherslu og tölfræði"
+                    >
+                      📜 Textasýn
+                    </button>
+                    {activeDocData.html_content && (
+                      <button
+                        type="button"
+                        onClick={() => setDocViewMode("formatted")}
+                        style={{
+                          background: docViewMode === "formatted" ? "#2563eb" : "transparent",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: "3px",
+                          padding: "4px 8px",
+                          fontSize: "0.72rem",
+                          fontWeight: docViewMode === "formatted" ? 600 : 400,
+                          cursor: "pointer",
+                        }}
+                        title="Skoða skjalið með upprunalegu sniði (Word HTML)"
+                      >
+                        📑 Word form
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Direct PDF Download / Open Link */}
+                {activeDocData.pdf_data_url && (
+                  <a
+                    href={activeDocData.pdf_data_url}
+                    download={activeDocData.title?.endsWith(".pdf") ? activeDocData.title : `${activeDocData.title || "skjal"}_v${activeDocData.version_number || selectedDoc.version || 1}.pdf`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Sækja eða opna upprunalega PDF skjalið"
+                    style={{
+                      background: "#334155",
+                      color: "#e2e8f0",
+                      border: "1px solid #475569",
+                      borderRadius: "4px",
+                      padding: "5px 9px",
+                      fontSize: "0.74rem",
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      textDecoration: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    ⬇️ Sækja PDF
+                  </a>
+                )}
+
+                {/* Direct DOCX Download */}
+                {(activeDocData.docx_data_url || activeDocData.is_docx || activeDocData.title?.toLowerCase().endsWith(".docx")) && (
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadVersion(activeDocData)}
+                    title="Sækja upprunalega Word (.docx) skjalið"
+                    style={{
+                      background: "#1e3a8a",
+                      color: "#dbeafe",
+                      border: "1px solid #3b82f6",
+                      borderRadius: "4px",
+                      padding: "5px 9px",
+                      fontSize: "0.74rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    ⬇️ Sækja DOCX
+                  </button>
+                )}
+
+                {/* Version History Button from Reader */}
+                <button
+                  type="button"
+                  onClick={() => handleOpenVersionHistory(selectedDoc)}
+                  title="Skoða allar útgáfur og endurheimta fyrri útgáfu"
+                  style={{
+                    background: "#1e293b",
+                    color: "#93c5fd",
+                    border: "1px solid #3b82f6",
+                    borderRadius: "4px",
+                    padding: "5px 9px",
+                    fontSize: "0.74rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  🕒 Útgáfur ({selectedDoc.versions?.length || 1})
+                </button>
+
+                {/* Upload Revision Button from Reader */}
+                <button
+                  type="button"
+                  onClick={() => handleOpenUploadRevision(selectedDoc)}
+                  title="Hlaða upp nýrri endurskoðaðri útgáfu af þessu skjali"
+                  style={{
+                    background: "#065f46",
+                    color: "#a7f3d0",
+                    border: "1px solid #059669",
+                    borderRadius: "4px",
+                    padding: "5px 9px",
+                    fontSize: "0.74rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  ⬆️ Ný útgáfa
+                </button>
+
                 <button
                   type="button"
                   onClick={() => openNotesModal(selectedDoc)}
@@ -2683,8 +3236,8 @@ export default function Dashboard() {
                 </button>
                 <button
                   onClick={() => {
-                    if (selectedDoc?.content) {
-                      navigator.clipboard.writeText(selectedDoc.content);
+                    if (displayDocContent) {
+                      navigator.clipboard.writeText(displayDocContent);
                       setDocCopied(true);
                       setTimeout(() => setDocCopied(false), 2000);
                     }
@@ -2702,7 +3255,10 @@ export default function Dashboard() {
                   {docCopied ? "✓ Afritað" : "📋 Afrita texta"}
                 </button>
                 <button
-                  onClick={() => setSelectedDoc(null)}
+                  onClick={() => {
+                    setSelectedDoc(null);
+                    setViewingVersion(null);
+                  }}
                   style={{
                     background: "transparent",
                     color: "#94a3b8",
@@ -2719,48 +3275,368 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Search & Metadata Ribbon */}
+            {/* Warning / Indicator Banner when viewing historical version */}
+            {viewingVersion && (
+              <div
+                style={{
+                  background: "#fffbeb",
+                  borderBottom: "1px solid #fde68a",
+                  padding: "10px 18px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  fontSize: "0.82rem",
+                  color: "#92400e",
+                  flexWrap: "wrap",
+                  gap: "10px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "1.2rem" }}>📜</span>
+                  <div>
+                    <strong>Þú ert að skoða sögulega útgáfu v{viewingVersion.version_number}</strong>
+                    {" "}(Skráð {new Date(viewingVersion.created_at).toLocaleString("is-IS")} af {viewingVersion.author || "höfundi"}).
+                    {viewingVersion.change_summary && (
+                      <span style={{ display: "block", fontSize: "0.76rem", color: "#b45309", marginTop: "2px" }}>
+                        Breytingalýsing: <em>"{viewingVersion.change_summary}"</em>
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => handleRestoreVersion(selectedDoc, viewingVersion)}
+                    style={{
+                      background: "#d97706",
+                      color: "#fff",
+                      border: "none",
+                      padding: "5px 12px",
+                      borderRadius: "5px",
+                      fontSize: "0.76rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      boxShadow: "0 1px 2px rgba(217,119,6,0.25)",
+                    }}
+                  >
+                    🔄 Endurheimta sem virka útgáfu
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewingVersion(null)}
+                    style={{
+                      background: "#fff",
+                      color: "#92400e",
+                      border: "1px solid #f59e0b",
+                      padding: "5px 12px",
+                      borderRadius: "5px",
+                      fontSize: "0.76rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Aftur í virka útgáfu (v{selectedDoc.version || 1})
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {docViewMode === "pdf" ? (
+              <div style={{ flex: 1, minHeight: "550px", height: "70vh", background: "#1e293b", display: "flex", flexDirection: "column" }}>
+                {activeDocData.pdf_data_url ? (
+                  <iframe
+                    src={`${activeDocData.pdf_data_url}#toolbar=1`}
+                    title={activeDocData.title}
+                    style={{ width: "100%", height: "100%", minHeight: "550px", border: "none", flex: 1 }}
+                  />
+                ) : (
+                  <div style={{ padding: "60px 20px", textAlign: "center", color: "#e2e8f0", margin: "auto" }}>
+                    <div style={{ fontSize: "2.5rem", marginBottom: "12px" }}>📄</div>
+                    <div style={{ fontWeight: 600, fontSize: "1.05rem", color: "#f8fafc" }}>PDF texti er tiltækur í textasýn</div>
+                    <p style={{ fontSize: "0.85rem", color: "#94a3b8", marginTop: "8px", maxWidth: "460px", margin: "8px auto 0", lineHeight: 1.5 }}>
+                      Skjalið var móttekið og texti þess greindur. Öll gögn og lykilatriði eru leitarbær með áherslulitum í textasýn.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setDocViewMode("text")}
+                      style={{ marginTop: "16px", background: "#2563eb", color: "#fff", border: "none", padding: "8px 18px", borderRadius: "6px", cursor: "pointer", fontSize: "0.85rem", fontWeight: 500 }}
+                    >
+                      Opna textasýn & leitarorð
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : docViewMode === "formatted" && activeDocData.html_content ? (
+              <div
+                style={{
+                  flex: 1,
+                  minHeight: "550px",
+                  maxHeight: "75vh",
+                  overflowY: "auto",
+                  background: "#f1f5f9",
+                  padding: "24px 20px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    maxWidth: "860px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "12px",
+                    fontSize: "0.76rem",
+                    color: "#64748b",
+                  }}
+                >
+                  <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ fontSize: "1rem" }}>📑</span>
+                    <strong>Word DOCX Sniðmátssýn</strong> • {activeDocData.title}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setDocViewMode("text")}
+                    style={{
+                      background: "#fff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "4px",
+                      padding: "4px 8px",
+                      fontSize: "0.72rem",
+                      cursor: "pointer",
+                      color: "#1e293b",
+                    }}
+                  >
+                    Skipta í textasýn með leitarvél 🔍
+                  </button>
+                </div>
+                <div
+                  style={{
+                    background: "#ffffff",
+                    width: "100%",
+                    maxWidth: "860px",
+                    minHeight: "650px",
+                    padding: "44px 52px",
+                    borderRadius: "4px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05)",
+                    color: "#1e293b",
+                    fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif",
+                    lineHeight: 1.65,
+                    fontSize: "0.95rem",
+                  }}
+                  className="prose max-w-none text-slate-800"
+                  dangerouslySetInnerHTML={{ __html: activeDocData.html_content }}
+                />
+              </div>
+            ) : (
+              <>
+                {/* Search & Metadata Ribbon */}
             <div
               style={{
                 padding: "10px 18px",
                 background: "#f8fafc",
                 borderBottom: "1px solid #e2e8f0",
                 display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: "12px",
-                flexWrap: "wrap",
+                flexDirection: "column",
+                gap: "8px",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, minWidth: "220px" }}>
-                <span style={{ fontSize: "0.85rem", color: "#64748b" }}>🔍</span>
-                <input
-                  type="text"
-                  placeholder="Leita að orði eða hugtaki í skjalinu..."
-                  value={docSearchQuery}
-                  onChange={(e) => setDocSearchQuery(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "5px 8px",
-                    fontSize: "0.82rem",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "4px",
-                    outline: "none",
-                  }}
-                />
-                {docSearchQuery && (
-                  <button
-                    onClick={() => setDocSearchQuery("")}
-                    style={{ background: "transparent", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "0.8rem" }}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                }}
+              >
+                {/* Search input with live counter and nav buttons */}
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: "280px" }}>
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "flex",
+                      alignItems: "center",
+                      flex: 1,
+                    }}
                   >
-                    ✕
-                  </button>
-                )}
+                    <span style={{ position: "absolute", left: "10px", fontSize: "0.85rem", color: "#64748b" }}>🔍</span>
+                    <input
+                      id="input-doc-search"
+                      type="text"
+                      placeholder="Leita að orði eða hugtaki í skjalinu (t.d. kröfur, galli, frestur)..."
+                      value={docSearchQuery}
+                      onChange={(e) => setDocSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (e.shiftKey) {
+                            handlePrevDocMatch();
+                          } else {
+                            handleNextDocMatch();
+                          }
+                        } else if (e.key === "Escape") {
+                          setDocSearchQuery("");
+                        }
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "6px 30px 6px 32px",
+                        fontSize: "0.84rem",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "6px",
+                        outline: "none",
+                        background: "#ffffff",
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
+                      }}
+                    />
+                    {docSearchQuery && (
+                      <button
+                        onClick={() => setDocSearchQuery("")}
+                        title="Hreinsa leit"
+                        style={{
+                          position: "absolute",
+                          right: "8px",
+                          background: "transparent",
+                          border: "none",
+                          color: "#94a3b8",
+                          cursor: "pointer",
+                          fontSize: "0.85rem",
+                          padding: "2px",
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Match counter & Navigation */}
+                  {docSearchQuery.trim() && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      {totalDocMatches > 0 ? (
+                        <>
+                          <span
+                            style={{
+                              background: "#dbeafe",
+                              color: "#1e40af",
+                              border: "1px solid #bfdbfe",
+                              padding: "4px 8px",
+                              borderRadius: "4px",
+                              fontSize: "0.75rem",
+                              fontWeight: 600,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {activeMatchIndex + 1} af {totalDocMatches}
+                          </span>
+                          <div style={{ display: "flex", gap: "2px" }}>
+                            <button
+                              id="btn-doc-search-prev"
+                              onClick={handlePrevDocMatch}
+                              title="Fyrri niðurstaða (Shift+Enter)"
+                              disabled={totalDocMatches <= 1}
+                              style={{
+                                background: "#ffffff",
+                                border: "1px solid #cbd5e1",
+                                borderRadius: "4px",
+                                padding: "4px 7px",
+                                fontSize: "0.75rem",
+                                cursor: totalDocMatches > 1 ? "pointer" : "default",
+                                opacity: totalDocMatches > 1 ? 1 : 0.5,
+                                color: "#334155",
+                                fontWeight: 600,
+                              }}
+                            >
+                              ▲
+                            </button>
+                            <button
+                              id="btn-doc-search-next"
+                              onClick={handleNextDocMatch}
+                              title="Næsta niðurstaða (Enter)"
+                              disabled={totalDocMatches <= 1}
+                              style={{
+                                background: "#ffffff",
+                                border: "1px solid #cbd5e1",
+                                borderRadius: "4px",
+                                padding: "4px 7px",
+                                fontSize: "0.75rem",
+                                cursor: totalDocMatches > 1 ? "pointer" : "default",
+                                opacity: totalDocMatches > 1 ? 1 : 0.5,
+                                color: "#334155",
+                                fontWeight: 600,
+                              }}
+                            >
+                              ▼
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <span
+                          style={{
+                            background: "#fee2e2",
+                            color: "#991b1b",
+                            border: "1px solid #fecaca",
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            fontSize: "0.75rem",
+                            fontWeight: 500,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Engin samsvörun
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ fontSize: "0.74rem", color: "#64748b", display: "flex", gap: "10px" }}>
+                  <span>Höfundur: <strong>{selectedDoc.author || "Málsaðili"}</strong></span>
+                  <span>Staða: <strong style={{ color: "#16a34a" }}>{selectedDoc.status}</strong></span>
+                  <span>RAG Vigrað: <strong>pgvector 768d</strong></span>
+                </div>
               </div>
-              <div style={{ fontSize: "0.74rem", color: "#64748b", display: "flex", gap: "10px" }}>
-                <span>Höfundur: <strong>{selectedDoc.author || "Málsaðili"}</strong></span>
-                <span>Staða: <strong style={{ color: "#16a34a" }}>{selectedDoc.status}</strong></span>
-                <span>RAG Vigrað: <strong>pgvector 768d</strong></span>
+
+              {/* Quick Keyword Highlights */}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>Lykilhugtök í málsskjölum:</span>
+                {[
+                  { label: "Kröfur", query: "Kröfur" },
+                  { label: "Galli / Rakaskemmdir", query: "galli" },
+                  { label: "Frestir", query: "frest" },
+                  { label: "Bætur / Fjárhæð", query: "kr." },
+                  { label: "Matsgerð", query: "mats" },
+                  { label: "Sönnunargögn", query: "sönnun" },
+                ].map((item) => {
+                  const isActive = docSearchQuery.toLowerCase() === item.query.toLowerCase();
+                  return (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => setDocSearchQuery(isActive ? "" : item.query)}
+                      style={{
+                        background: isActive ? "#2563eb" : "#ffffff",
+                        color: isActive ? "#ffffff" : "#475569",
+                        border: isActive ? "1px solid #1d4ed8" : "1px solid #cbd5e1",
+                        borderRadius: "12px",
+                        padding: "2px 8px",
+                        fontSize: "0.72rem",
+                        fontWeight: isActive ? 600 : 500,
+                        cursor: "pointer",
+                        transition: "all 0.1s ease",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "3px",
+                      }}
+                      title={`Draga fram „${item.query}“ í skjalinu`}
+                    >
+                      <span>🔍</span>
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -2881,28 +3757,50 @@ export default function Dashboard() {
 
                 {/* Document Text */}
                 {selectedDoc.content ? (
-                  docSearchQuery.trim() ? (
+                  docSearchQuery.trim() && docSearchResults.regex && totalDocMatches > 0 ? (
                     (() => {
                       const text = selectedDoc.content;
-                      const q = docSearchQuery.trim();
-                      const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
-                      const parts = text.split(regex);
+                      const parts = text.split(docSearchResults.regex);
+                      const testRegex = new RegExp(`^(${docSearchResults.terms.join("|")})$`, "i");
+                      let matchIdx = -1;
+
                       return (
                         <div>
-                          {parts.map((part: string, i: number) =>
-                            regex.test(part) ? (
-                              <mark key={i} style={{ background: "#fef08a", color: "#854d0e", padding: "1px 2px", borderRadius: "2px" }}>
-                                {part}
-                              </mark>
-                            ) : (
-                              <span key={i}>{part}</span>
-                            )
-                          )}
+                          {parts.map((part: string, idx: number) => {
+                            if (testRegex.test(part)) {
+                              matchIdx++;
+                              const currentIdx = matchIdx;
+                              const isActive = currentIdx === activeMatchIndex;
+                              return (
+                                <mark
+                                  id={`doc-highlight-match-${currentIdx}`}
+                                  key={idx}
+                                  style={{
+                                    background: isActive ? "#ea580c" : "#fef08a",
+                                    color: isActive ? "#ffffff" : "#713f12",
+                                    fontWeight: isActive ? 700 : 600,
+                                    padding: isActive ? "2px 5px" : "1px 3px",
+                                    borderRadius: "3px",
+                                    borderBottom: isActive ? "2px solid #9a3412" : "1.5px solid #eab308",
+                                    boxShadow: isActive
+                                      ? "0 0 0 2px #fdba74, 0 2px 5px rgba(234, 88, 12, 0.4)"
+                                      : "none",
+                                    transition: "background 0.15s ease, color 0.15s ease",
+                                    display: "inline-block",
+                                  }}
+                                  title={`Samsvörun ${currentIdx + 1} af ${totalDocMatches} (Enter fyrir næsta)`}
+                                >
+                                  {part}
+                                </mark>
+                              );
+                            }
+                            return <span key={idx}>{part}</span>;
+                          })}
                         </div>
                       );
                     })()
                   ) : (
-                    selectedDoc.content
+                    displayDocContent
                   )
                 ) : (
                   <div style={{ textAlign: "center", color: "#94a3b8", padding: "40px 0", fontFamily: "sans-serif" }}>
@@ -2911,6 +3809,8 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
+          </>
+        )}
 
             {/* Footer */}
             <div
@@ -2942,6 +3842,827 @@ export default function Dashboard() {
                 }}
               >
                 Loka glugga
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VERSION HISTORY MODAL */}
+      {versionHistoryDoc && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.75)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9992,
+            padding: "16px",
+          }}
+          onClick={() => setVersionHistoryDoc(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: "10px",
+              width: "100%",
+              maxWidth: "800px",
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.35)",
+              border: "1px solid #cbd5e1",
+              overflow: "hidden",
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: "16px 20px",
+                background: "#0f172a",
+                color: "#fff",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderBottom: "1px solid #334155",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "1.3rem" }}>🕒</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    Útgáfusaga málsskjals
+                    <span style={{ background: "#2563eb", color: "#fff", fontSize: "0.68rem", padding: "2px 8px", borderRadius: "4px" }}>
+                      {versionHistoryDoc.doc_type}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "0.76rem", color: "#94a3b8" }}>
+                    {versionHistoryDoc.title} • {activeCase?.case_number}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleOpenUploadRevision(versionHistoryDoc);
+                  }}
+                  style={{
+                    background: "#059669",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "5px",
+                    padding: "6px 12px",
+                    fontSize: "0.78rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <span>⬆️</span> Ný útgáfa
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVersionHistoryDoc(null)}
+                  style={{
+                    background: "transparent",
+                    color: "#94a3b8",
+                    border: "none",
+                    fontSize: "1.2rem",
+                    cursor: "pointer",
+                    lineHeight: 1,
+                    padding: "4px 8px",
+                  }}
+                  title="Loka"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Notice if any */}
+            {versionActionNotice && (
+              <div style={{ background: "#f0fdf4", borderBottom: "1px solid #bbf7d0", color: "#166534", padding: "10px 20px", fontSize: "0.82rem", fontWeight: 600 }}>
+                {versionActionNotice}
+              </div>
+            )}
+
+            {/* Summary info bar */}
+            <div
+              style={{
+                padding: "12px 20px",
+                background: "#f8fafc",
+                borderBottom: "1px solid #e2e8f0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "10px",
+                fontSize: "0.78rem",
+                color: "#475569",
+              }}
+            >
+              <div>
+                Núverandi virk útgáfa:{" "}
+                <strong style={{ color: "#1e293b" }}>v{versionHistoryDoc.version || (versionHistoryDoc.versions?.length || 1)}</strong>
+              </div>
+              <div>
+                Heildarfjöldi skráðra útgáfa:{" "}
+                <strong style={{ color: "#1e293b" }}>{versionHistoryDoc.versions?.length || 1}</strong>
+              </div>
+              <div>
+                Fyrst lagt fram:{" "}
+                <strong style={{ color: "#1e293b" }}>{new Date(versionHistoryDoc.created_at).toLocaleDateString("is-IS")}</strong>
+              </div>
+            </div>
+
+            {/* Versions List */}
+            <div style={{ padding: "20px", overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: "12px" }}>
+              {(() => {
+                const currentVerNum = versionHistoryDoc.version || (versionHistoryDoc.versions?.length || 1);
+                const versionsList = [...(versionHistoryDoc.versions || [])].sort((a: any, b: any) => b.version_number - a.version_number);
+
+                if (versionsList.length === 0) {
+                  return (
+                    <div style={{ padding: "30px", textAlign: "center", color: "#94a3b8" }}>
+                      Engin útgáfusaga skráð fyrir þetta skjal.
+                    </div>
+                  );
+                }
+
+                return versionsList.map((v: any) => {
+                  const isActive = v.version_number === currentVerNum;
+                  return (
+                    <div
+                      key={v.id || v.version_number}
+                      style={{
+                        padding: "16px",
+                        borderRadius: "8px",
+                        border: `1px solid ${isActive ? "#86efac" : "#e2e8f0"}`,
+                        background: isActive ? "#f0fdf4" : "#ffffff",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "10px",
+                        boxShadow: isActive ? "0 2px 4px rgba(22,101,52,0.06)" : "0 1px 2px rgba(0,0,0,0.03)",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <span
+                            style={{
+                              background: isActive ? "#15803d" : "#475569",
+                              color: "#fff",
+                              padding: "4px 10px",
+                              borderRadius: "20px",
+                              fontWeight: 700,
+                              fontSize: "0.82rem",
+                            }}
+                          >
+                            v{v.version_number}
+                          </span>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: "0.92rem", color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
+                              <span>{v.title || versionHistoryDoc.title}</span>
+                              {isActive && (
+                                <span
+                                  style={{
+                                    background: "#dcfce7",
+                                    color: "#15803d",
+                                    border: "1px solid #86efac",
+                                    padding: "2px 8px",
+                                    borderRadius: "4px",
+                                    fontSize: "0.68rem",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  NÚVERANDI VIRK ÚTGÁFA
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "2px" }}>
+                              Skráð: <strong>{new Date(v.created_at).toLocaleString("is-IS")}</strong> • Höfundur: <em>{v.author || "Óþekktur"}</em>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action buttons for this version */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                          {/* View in Document Reader */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedDoc(versionHistoryDoc);
+                              setViewingVersion(isActive ? null : v);
+                              setDocSearchQuery("");
+                              setVersionHistoryDoc(null);
+                            }}
+                            title="Opna og lesa þessa útgáfu í dómaskjalalesara"
+                            style={{
+                              background: "#2563eb",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: "5px",
+                              padding: "6px 12px",
+                              fontSize: "0.75rem",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                            }}
+                          >
+                            👁️ Skoða
+                          </button>
+
+                          {/* Download this version */}
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadVersion(v)}
+                            title="Sækja eintak af þessari útgáfu"
+                            style={{
+                              background: "#f1f5f9",
+                              color: "#334155",
+                              border: "1px solid #cbd5e1",
+                              borderRadius: "5px",
+                              padding: "6px 10px",
+                              fontSize: "0.75rem",
+                              fontWeight: 500,
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                            }}
+                          >
+                            📥 Sækja
+                          </button>
+
+                          {/* Compare with current version */}
+                          {!isActive && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentDocActiveVersion = versionsList.find((item: any) => item.version_number === currentVerNum) || {
+                                  version_number: currentVerNum,
+                                  title: versionHistoryDoc.title,
+                                  content: versionHistoryDoc.content,
+                                  created_at: versionHistoryDoc.updated_at || versionHistoryDoc.created_at,
+                                  author: versionHistoryDoc.author,
+                                  change_summary: "Núverandi virk útgáfa",
+                                  page_count: versionHistoryDoc.page_count,
+                                };
+                                setDiffDoc({
+                                  doc: versionHistoryDoc,
+                                  vA: v,
+                                  vB: currentDocActiveVersion,
+                                });
+                              }}
+                              title="Bera saman þessa útgáfu við núverandi virka útgáfu"
+                              style={{
+                                background: "#f8fafc",
+                                color: "#475569",
+                                border: "1px solid #cbd5e1",
+                                borderRadius: "5px",
+                                padding: "6px 10px",
+                                fontSize: "0.75rem",
+                                fontWeight: 500,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                              }}
+                            >
+                              ⚖️ Bera saman
+                            </button>
+                          )}
+
+                          {/* Restore as active if historical */}
+                          {!isActive && (
+                            <button
+                              type="button"
+                              onClick={() => handleRestoreVersion(versionHistoryDoc, v)}
+                              title="Endurheimta þessa útgáfu sem nýjustu virka útgáfu málsskjalsins"
+                              style={{
+                                background: "#fff7ed",
+                                color: "#c2410c",
+                                border: "1px solid #fdba74",
+                                borderRadius: "5px",
+                                padding: "6px 12px",
+                                fontSize: "0.75rem",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                              }}
+                            >
+                              🔄 Endurheimta
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Change Note and File Details */}
+                      <div
+                        style={{
+                          background: isActive ? "#ffffff" : "#f8fafc",
+                          borderRadius: "6px",
+                          border: `1px solid ${isActive ? "#dcfce7" : "#e2e8f0"}`,
+                          padding: "8px 12px",
+                          fontSize: "0.78rem",
+                          color: "#334155",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: "6px" }}>
+                          <span style={{ fontWeight: 600, color: "#64748b" }}>Breyting:</span>
+                          <span style={{ fontStyle: "italic", color: "#1e293b" }}>
+                            "{v.change_summary || "Upphafleg útgáfa málsskjals"}"
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", gap: "16px", marginTop: "6px", fontSize: "0.72rem", color: "#64748b" }}>
+                          <span>Fjöldi blaðsíðna: <strong>{v.page_count}</strong></span>
+                          <span>Tegund: <strong>{v.is_pdf ? "PDF skjal" : v.is_docx || v.title?.toLowerCase().endsWith(".docx") ? "Word skjal (.docx)" : "Textaskjal"}</strong></span>
+                          {v.file_size && <span>Stærð: <strong>{Math.round(v.file_size / 1024)} KB</strong></span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            {/* Footer */}
+            <div
+              style={{
+                padding: "14px 20px",
+                background: "#f8fafc",
+                borderTop: "1px solid #e2e8f0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                fontSize: "0.76rem",
+                color: "#64748b",
+              }}
+            >
+              <div>Allar breytingar eru skráðar í dómabók með fullum réttaráhrifum.</div>
+              <button
+                type="button"
+                onClick={() => setVersionHistoryDoc(null)}
+                style={{
+                  background: "#0f172a",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "5px",
+                  padding: "6px 16px",
+                  fontSize: "0.78rem",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                }}
+              >
+                Loka glugga
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UPLOAD REVISION MODAL */}
+      {uploadRevisionDoc && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.75)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9993,
+            padding: "16px",
+          }}
+          onClick={() => setUploadRevisionDoc(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: "10px",
+              width: "100%",
+              maxWidth: "580px",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.35)",
+              border: "1px solid #cbd5e1",
+              overflow: "hidden",
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: "16px 20px",
+                background: "#0f172a",
+                color: "#fff",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderBottom: "1px solid #334155",
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 700, fontSize: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span>⬆️ Hlaða upp nýrri útgáfu</span>
+                  <span
+                    style={{
+                      background: "#16a34a",
+                      color: "#fff",
+                      fontSize: "0.68rem",
+                      padding: "2px 8px",
+                      borderRadius: "4px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Verður v{(uploadRevisionDoc.version || (uploadRevisionDoc.versions?.length || 1)) + 1}
+                  </span>
+                </div>
+                <div style={{ fontSize: "0.76rem", color: "#94a3b8", marginTop: "2px" }}>
+                  {uploadRevisionDoc.title}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUploadRevisionDoc(null)}
+                style={{
+                  background: "transparent",
+                  color: "#94a3b8",
+                  border: "none",
+                  fontSize: "1.2rem",
+                  cursor: "pointer",
+                  lineHeight: 1,
+                  padding: "4px 8px",
+                }}
+                title="Loka"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleUploadRevisionSubmit}>
+              <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                {/* File picker */}
+                <div>
+                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#1e293b", marginBottom: "6px" }}>
+                    Veldu endurskoðaða skrá (PDF eða textaskjal)
+                  </label>
+                  <div
+                    style={{
+                      border: "2px dashed #cbd5e1",
+                      borderRadius: "8px",
+                      padding: "20px",
+                      textAlign: "center",
+                      background: revisionFile ? "#f0fdf4" : "#f8fafc",
+                      borderColor: revisionFile ? "#86efac" : "#cbd5e1",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => {
+                      document.getElementById("revision-file-input")?.click();
+                    }}
+                  >
+                    <input
+                      id="revision-file-input"
+                      type="file"
+                      accept=".pdf,.txt,.doc,.docx"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setRevisionFile(e.target.files[0]);
+                        }
+                      }}
+                    />
+                    {revisionFile ? (
+                      <div>
+                        <div style={{ fontSize: "1.6rem" }}>📄</div>
+                        <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "#15803d", marginTop: "4px" }}>
+                          {revisionFile.name}
+                        </div>
+                        <div style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "2px" }}>
+                          {Math.round(revisionFile.size / 1024)} KB • {revisionFile.type || "Skjal"}
+                        </div>
+                        <div style={{ fontSize: "0.72rem", color: "#2563eb", marginTop: "8px", textDecoration: "underline" }}>
+                          Smelltu til að velja aðra skrá
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ fontSize: "1.6rem", color: "#64748b" }}>📁</div>
+                        <div style={{ fontWeight: 600, fontSize: "0.86rem", color: "#334155", marginTop: "4px" }}>
+                          Smelltu eða dragðu nýja skrá hingað
+                        </div>
+                        <div style={{ fontSize: "0.74rem", color: "#94a3b8", marginTop: "2px" }}>
+                          Styður PDF, TXT, DOCX skjöl
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Change note / lýsing */}
+                <div>
+                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#1e293b", marginBottom: "6px" }}>
+                    Breytingalýsing / Athugasemd við útgáfu (fært í dómabók)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={revisionNote}
+                    onChange={(e) => setRevisionNote(e.target.value)}
+                    placeholder="T.d. Lagaðar innsláttarvillur í kröfugerð, nýjum málsástæðum bætt við, endurútreikningur vaxta..."
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "0.82rem",
+                      fontFamily: "inherit",
+                      lineHeight: 1.4,
+                      outline: "none",
+                    }}
+                  />
+                </div>
+
+                {/* Author */}
+                <div>
+                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "#1e293b", marginBottom: "6px" }}>
+                    Lögmaður / Höfundur útgáfu
+                  </label>
+                  <input
+                    type="text"
+                    value={revisionAuthor}
+                    onChange={(e) => setRevisionAuthor(e.target.value)}
+                    placeholder="Nafn lögmanns eða málflytjanda"
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "0.82rem",
+                      fontFamily: "inherit",
+                      outline: "none",
+                    }}
+                  />
+                </div>
+
+                {/* Error message */}
+                {revisionError && (
+                  <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", color: "#b91c1c", padding: "8px 12px", borderRadius: "6px", fontSize: "0.8rem" }}>
+                    {revisionError}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div
+                style={{
+                  padding: "14px 20px",
+                  background: "#f8fafc",
+                  borderTop: "1px solid #e2e8f0",
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: "10px",
+                  alignItems: "center",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setUploadRevisionDoc(null)}
+                  disabled={uploadingRevision}
+                  style={{
+                    background: "#fff",
+                    color: "#475569",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "5px",
+                    padding: "6px 14px",
+                    fontSize: "0.8rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  Hætta við
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploadingRevision || (!revisionFile && !revisionNote.trim())}
+                  style={{
+                    background: "#16a34a",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "5px",
+                    padding: "6px 18px",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    boxShadow: "0 1px 2px rgba(22,163,74,0.25)",
+                    opacity: uploadingRevision ? 0.7 : 1,
+                  }}
+                >
+                  {uploadingRevision ? "Hleður upp og greinir..." : `Virkja útgáfu v${(uploadRevisionDoc.version || (uploadRevisionDoc.versions?.length || 1)) + 1}`}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* VERSION COMPARISON / DIFF MODAL */}
+      {diffDoc && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.75)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9994,
+            padding: "16px",
+          }}
+          onClick={() => setDiffDoc(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: "10px",
+              width: "100%",
+              maxWidth: "920px",
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.35)",
+              border: "1px solid #cbd5e1",
+              overflow: "hidden",
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: "16px 20px",
+                background: "#0f172a",
+                color: "#fff",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderBottom: "1px solid #334155",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "1.3rem" }}>⚖️</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "1rem" }}>
+                    Samanburður á útgáfum: v{diffDoc.vA.version_number} vs v{diffDoc.vB.version_number}
+                  </div>
+                  <div style={{ fontSize: "0.76rem", color: "#94a3b8" }}>
+                    {diffDoc.doc.title}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDiffDoc(null)}
+                style={{
+                  background: "transparent",
+                  color: "#94a3b8",
+                  border: "none",
+                  fontSize: "1.2rem",
+                  cursor: "pointer",
+                  lineHeight: 1,
+                  padding: "4px 8px",
+                }}
+                title="Loka"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Comparison Overview Bar */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                borderBottom: "1px solid #e2e8f0",
+                background: "#f8fafc",
+              }}
+            >
+              <div style={{ padding: "14px 20px", borderRight: "1px solid #e2e8f0" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ background: "#475569", color: "#fff", padding: "2px 8px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 700 }}>
+                    v{diffDoc.vA.version_number}
+                  </span>
+                  <span style={{ fontWeight: 600, fontSize: "0.88rem", color: "#1e293b" }}>Fyrri útgáfa</span>
+                </div>
+                <div style={{ fontSize: "0.76rem", color: "#64748b", marginTop: "4px" }}>
+                  Dagsetning: {new Date(diffDoc.vA.created_at).toLocaleString("is-IS")} • Höfundur: {diffDoc.vA.author || "Óþekktur"}
+                </div>
+                <div style={{ fontSize: "0.76rem", color: "#334155", marginTop: "4px", fontStyle: "italic" }}>
+                  "{diffDoc.vA.change_summary || "Upphafleg útgáfa"}"
+                </div>
+                <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "4px" }}>
+                  Lengd: {diffDoc.vA.content ? diffDoc.vA.content.split(/\s+/).filter(Boolean).length : 0} orð ({diffDoc.vA.page_count || 1} bls.)
+                </div>
+              </div>
+
+              <div style={{ padding: "14px 20px", background: "#f0fdf4" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ background: "#15803d", color: "#fff", padding: "2px 8px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 700 }}>
+                    v{diffDoc.vB.version_number}
+                  </span>
+                  <span style={{ fontWeight: 600, fontSize: "0.88rem", color: "#15803d" }}>Virka útgáfan</span>
+                </div>
+                <div style={{ fontSize: "0.76rem", color: "#64748b", marginTop: "4px" }}>
+                  Dagsetning: {new Date(diffDoc.vB.created_at).toLocaleString("is-IS")} • Höfundur: {diffDoc.vB.author || "Óþekktur"}
+                </div>
+                <div style={{ fontSize: "0.76rem", color: "#334155", marginTop: "4px", fontStyle: "italic" }}>
+                  "{diffDoc.vB.change_summary || "Núverandi útgáfa"}"
+                </div>
+                <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "4px" }}>
+                  Lengd: {diffDoc.vB.content ? diffDoc.vB.content.split(/\s+/).filter(Boolean).length : 0} orð ({diffDoc.vB.page_count || 1} bls.)
+                </div>
+              </div>
+            </div>
+
+            {/* Side-by-side text preview */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", flex: 1, overflowY: "auto", minHeight: "360px" }}>
+              <div style={{ padding: "16px 20px", borderRight: "1px solid #e2e8f0", background: "#fafafa", fontSize: "0.82rem", lineHeight: 1.6, whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
+                {diffDoc.vA.content || "[Enginn texti í þessari útgáfu]"}
+              </div>
+              <div style={{ padding: "16px 20px", background: "#ffffff", fontSize: "0.82rem", lineHeight: 1.6, whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
+                {diffDoc.vB.content || "[Enginn texti í þessari útgáfu]"}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div
+              style={{
+                padding: "12px 20px",
+                background: "#f8fafc",
+                borderTop: "1px solid #e2e8f0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  handleRestoreVersion(diffDoc.doc, diffDoc.vA);
+                  setDiffDoc(null);
+                }}
+                style={{
+                  background: "#fff7ed",
+                  color: "#c2410c",
+                  border: "1px solid #fdba74",
+                  borderRadius: "5px",
+                  padding: "6px 14px",
+                  fontSize: "0.78rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                🔄 Endurheimta v{diffDoc.vA.version_number} sem virka útgáfu
+              </button>
+              <button
+                type="button"
+                onClick={() => setDiffDoc(null)}
+                style={{
+                  background: "#0f172a",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "5px",
+                  padding: "6px 16px",
+                  fontSize: "0.78rem",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                }}
+              >
+                Loka samanburði
               </button>
             </div>
           </div>

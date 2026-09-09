@@ -10,7 +10,7 @@ export function LoginView() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleTestUserLogin = (roleKey: string) => {
+  const handleTestUserLogin = (roleKey: "LAWYER" | "JUDGE" | "PARALEGAL" | "ADMIN") => {
     setIsLoading(true);
     setError("");
     setTimeout(() => {
@@ -36,7 +36,7 @@ export function LoginView() {
     }, 250);
   };
 
-  const testUsersList: { key: string; user: User; desc: string; icon: string }[] = [
+  const testUsersList: { key: "LAWYER" | "JUDGE" | "PARALEGAL" | "ADMIN"; user: User; desc: string; icon: string }[] = [
     {
       key: "LAWYER",
       user: DEMO_USERS.LAWYER,
