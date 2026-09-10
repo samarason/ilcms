@@ -244,6 +244,12 @@ export interface ExpenseItem {
   created_at: string;
 }
 
+export function getRelativeDeadlineDateStr(hoursFromNow: number): string {
+  const d = new Date(Date.now() + hoursFromNow * 60 * 60 * 1000);
+  const pad = (n: number) => (n < 10 ? "0" + n : n);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export const casesStore: CaseItem[] = [
   {
     id: "case-01",
@@ -271,6 +277,24 @@ export const casesStore: CaseItem[] = [
     priority: "HIGH",
     status: "OPEN",
     created_at: "2026-09-01T09:15:00Z",
+  },
+  {
+    id: "case-04",
+    case_number: "E-1025/2026",
+    title: "Sparisjóður Austurlands hf. gegn Norðurfelli ehf.",
+    description: "Flýtimeðferð vegna gjaldfellingar lánasamnings að fjárhæð kr. 35.800.000 og sjálfskuldarábyrgðar stjórnarformanns. Bráður greinargerðarfrestur stefnda rennur út innan skamms skv. 97. gr. laga nr. 91/1991.",
+    priority: "HIGH",
+    status: "ACTIVE",
+    created_at: "2026-09-08T08:30:00Z",
+  },
+  {
+    id: "case-05",
+    case_number: "E-1218/2026",
+    title: "Kristín Valdimarsdóttir gegn Sjúkratryggingum Íslands",
+    description: "Krafa um bráðabirgðaúrskurð dómara skv. 102. gr. eml. um greiðsluþátttöku í lífsnauðsynlegri sérhæfðri krabbameinsmeðferð við Háskólasjúkrahúsið í Uppsölum að fjárhæð kr. 18.600.000. Brýnn málflutningsfrestur.",
+    priority: "HIGH",
+    status: "ACTIVE",
+    created_at: "2026-09-09T09:00:00Z",
   },
 ];
 
@@ -402,6 +426,106 @@ Laugavegur 45, 101 Reykjavík. Kaupverð kr. 98.000.000. Ástandsyfirlýsing skv
     content: `SKOÐUNARSKÝRSLA UM INNIVIST, RAKA OG MYGLU
 Laugavegur 45. Svartmygla (Stachybotrys chartarum). Úrbótakostnaður kr. 14.200.000.`,
   },
+  {
+    id: "doc-04-stefna",
+    case_id: "case-04",
+    title: "Stefna í flýtimeðferðarmáli og gjaldfelling.pdf",
+    doc_type: "Stefna",
+    status: "READY",
+    page_count: 9,
+    created_at: "2026-09-08T09:00:00Z",
+    filing_date: "2026-09-08",
+    author: "Lögmannsstofa Reykjavíkur slf., f.h. Sparisjóðs Austurlands hf.",
+    summary: "Stefna á hendur Norðurfelli ehf. og sjálfskuldarábyrgðarmanni vegna vanefnda á lánasamningi. Krafist kr. 35.800.000 auk dráttarvaxta.",
+    content: `STEFNA Í FLÝTIMEÐFERÐARMÁLI
+Stefnandi: Sparisjóður Austurlands hf., kt. 620598-2139
+Stefndu: 1. Norðurfell ehf., kt. 581014-0320
+         2. Jónas Hallgrímsson, kt. 240776-4189 (ábyrgðarmaður)
+Fyrir Héraðsdóm Reykjavíkur. Krafa um greiðslu kr. 35.800.000 ásamt hæstu lögleyfðu dráttarvöxtum skv. lögum nr. 38/2001.`,
+  },
+  {
+    id: "doc-04-skuldabref",
+    case_id: "case-04",
+    title: "Skuldabréf nr. 49201 og sjálfskuldarábyrgð.pdf",
+    doc_type: "Samningur",
+    status: "READY",
+    page_count: 14,
+    created_at: "2026-09-08T09:15:00Z",
+    filing_date: "2026-09-08",
+    author: "Lánadeild Sparisjóðs Austurlands hf.",
+    summary: "Skilmálar skuldabréfs og þinglýst sjálfskuldarábyrgðaryfirlýsing stjórnarformanns vegna rekstrarláns.",
+    content: `SKULDABRÉF MEÐ SJÁLFSKULDARÁBYRGÐ
+Lánveitandi: Sparisjóður Austurlands hf.
+Aðalskuldari: Norðurfell ehf. Sjálfskuldarábyrgðarmaður: Jónas Hallgrímsson.
+Höfuðstóll: kr. 35.800.000. Gjaldfellingarákvæði við 30 daga vanskil.`,
+  },
+  {
+    id: "doc-04-drog-greinargerd",
+    case_id: "case-04",
+    title: "Drög að greinargerð og varnarorðum stefnda.docx",
+    doc_type: "Greinargerð",
+    status: "READY",
+    page_count: 7,
+    created_at: "2026-09-09T14:20:00Z",
+    filing_date: "2026-09-09",
+    author: "Guðrún Sigurðardóttir hrl., lögmaður varnaraðila",
+    summary: "Drög að vörnum stefnda fyrir dómi. Gerð krafa um sýknu og frávísun vegna formgalla á gjaldfellingarseðli skv. 143. gr. eml.",
+    notes: "Bráðaaðgerð: Greinargerðarfrestur rennur út innan skamms. Senda þarf andmæli fyrir dómþing.",
+    notes_updated_at: "2026-09-09T15:00:00Z",
+    content: `GREINARGERÐ STEFNDA Í FLÝTIMEÐFERÐ
+Mál nr. E-1025/2026
+Stefndu krefjast sýknu af öllum kröfum stefnanda, til vara frávísunar.
+Rök: Gjaldfelling lánsins var ólögmæt þar sem stefnandi veitti ekki lögbundinn 14 daga frest til greiðslujöfnunar.`,
+  },
+  {
+    id: "doc-05-stefna",
+    case_id: "case-05",
+    title: "Stefna og krafa um bráðabirgðaúrskurð dómara.pdf",
+    doc_type: "Stefna",
+    status: "READY",
+    page_count: 12,
+    created_at: "2026-09-09T10:30:00Z",
+    filing_date: "2026-09-09",
+    author: "Lögmannsstofa stefnanda f.h. Kristínar Valdimarsdóttur",
+    summary: "Stefna á hendur Sjúkratryggingum Íslands og ríkinu með kröfu um bráðabirgðaúrskurð skv. 2. mgr. 102. gr. eml. um greiðsluþátttöku í læknismeðferð í Uppsölum.",
+    content: `STEFNA MEÐ KRÖFU UM BRÁÐABIRGÐAÚRSKURÐ DÓMARA
+Stefnandi: Kristín Valdimarsdóttir, kt. 120385-4819
+Stefndu: 1. Sjúkratryggingar Íslands, kt. 490908-0840
+         2. Íslenska ríkið, kt. 440269-0129
+Kröfur: Viðurkenning á rétti til greiðsluþátttöku kr. 18.600.000 vegna lífsnauðsynlegrar meðferðar, og bráðabirgðaráðstöfun dómara samdægurs skv. 102. gr. laga nr. 91/1991.`,
+  },
+  {
+    id: "doc-05-synjun",
+    case_id: "case-05",
+    title: "Synjunarúrskurður Sjúkratrygginga Íslands.pdf",
+    doc_type: "Stjórnvaldsúrskurður",
+    status: "READY",
+    page_count: 5,
+    created_at: "2026-09-09T11:00:00Z",
+    filing_date: "2026-09-09",
+    author: "Úrskurðarnefnd velferðarmála / Sjúkratryggingar",
+    summary: "Synjun á umsókn stefnanda um greiðsluþátttöku í sérhæfðri ónæmismeðferð á Háskólasjúkrahúsinu í Uppsölum skv. reglugerð nr. 431/2012.",
+    content: `ÁKVÖRÐUN SJÚKRATRYGGINGA ÍSLANDS
+Mál nr. S-8924/2026
+Umsókn um greiðsluþátttöku í meðferð erlendis synjað á grundvelli þess að meðferðin teljist ekki gagnreynd skv. mati ráðgjafalæknis stofnunarinnar.`,
+  },
+  {
+    id: "doc-05-laeknamat",
+    case_id: "case-05",
+    title: "Læknisfræðilegt bráðamat og yfirlýsing yfirlæknis.pdf",
+    doc_type: "Sérfræðiskýrsla",
+    status: "READY",
+    page_count: 15,
+    created_at: "2026-09-09T11:20:00Z",
+    filing_date: "2026-09-09",
+    author: "Prófessor Ólafur Guðmundsson, yfirlæknir krabbameinslækninga Landspítala",
+    summary: "Bráðamat: Hefðbundin lyfja- og geislameðferð á Íslandi hefur ekki skilað árangri. Meðferð í Svíþjóð er eini raunhæfi lífsbjargandi kosturinn og hver vika skiptir máli.",
+    notes: "Mjög afgerandi sérfræðimat. Stuðlar að fullu við bráðabirgðakröfu skv. 102. gr. eml.",
+    notes_updated_at: "2026-09-09T12:00:00Z",
+    content: `LÆKNISFRÆÐILEG ÁLITSGERÐ OG BRÁÐAMAT
+Sjúklingur: Kristín Valdimarsdóttir.
+Niðurstaða: Meðferðin í Uppsölum er lífsbjargandi og rökstudd með nýjustu klínískum rannsóknum. Dráttur á meðferð skerðir lífslíkur sjúklings óafturkræft.`,
+  },
 ];
 
 export const deadlinesStore: CaseDeadlineItem[] = [
@@ -440,6 +564,54 @@ export const deadlinesStore: CaseDeadlineItem[] = [
     is_court_recess_adjusted: false,
     status: "urgent",
     created_at: "2026-09-02T11:00:00Z",
+  },
+  {
+    id: "dl-04",
+    case_id: "case-04",
+    name: "Bráðafrestur: Greinargerð og varnir (Flýtimeðferð)",
+    category: "greinargerdfrestur",
+    target_date: getRelativeDeadlineDateStr(18),
+    statutory_reference: "97. gr. og 143. gr. laga nr. 91/1991",
+    description: "Lokafrestur stefnda til að leggja fram skriflega greinargerð, sýknukröfur og málsgögn í flýtimeðferðarmáli.",
+    is_court_recess_adjusted: false,
+    status: "urgent",
+    created_at: "2026-09-08T10:00:00Z",
+  },
+  {
+    id: "dl-04-sub",
+    case_id: "case-04",
+    name: "Frestur til að höfða staðfestingarmál vegna kyrrsetningar",
+    category: "stefnufrestur",
+    target_date: getRelativeDeadlineDateStr(42),
+    statutory_reference: "3. mgr. 44. gr. laga nr. 31/1990",
+    description: "Lögbundinn 7 daga frestur gerðarbeiðanda til að höfða staðfestingarmál vegna framkvæmdrar kyrrsetningar í eignum skuldara.",
+    is_court_recess_adjusted: false,
+    status: "urgent",
+    created_at: "2026-09-08T10:30:00Z",
+  },
+  {
+    id: "dl-05",
+    case_id: "case-05",
+    name: "Brýnn málflutningsfrestur vegna bráðabirgðaúrskurðar",
+    category: "malsflutningur",
+    target_date: getRelativeDeadlineDateStr(28),
+    statutory_reference: "2. mgr. 102. gr. laga nr. 91/1991",
+    description: "Úrlausnarkrafa og dómþing um bráðabirgðaráðstöfun dómara um greiðsluþátttöku í lífsnauðsynlegri læknismeðferð erlendis.",
+    is_court_recess_adjusted: false,
+    status: "urgent",
+    created_at: "2026-09-09T10:15:00Z",
+  },
+  {
+    id: "dl-05-sub",
+    case_id: "case-05",
+    name: "Frestur ríkislögmanns til að leggja fram andmæli og sérfræðimat",
+    category: "gagnaoflun",
+    target_date: getRelativeDeadlineDateStr(46),
+    statutory_reference: "101. gr. laga nr. 91/1991",
+    description: "Lokafrestur stefndu til að skila andmælum og læknisfræðilegum sérfræðigögnum fyrir dómþing.",
+    is_court_recess_adjusted: false,
+    status: "urgent",
+    created_at: "2026-09-09T10:45:00Z",
   },
 ];
 
@@ -534,6 +706,66 @@ export const timeEntriesStore: TimeEntryItem[] = [
     status: "unbilled",
     created_at: "2026-09-03T16:00:00Z",
   },
+  {
+    id: "time-07",
+    case_id: "case-04",
+    user_id: "usr-lawyer-01",
+    user_name: "Guðrún Sigurðardóttir hrl.",
+    user_role: "Málflytjandi / Partner",
+    date: "2026-09-08",
+    duration_minutes: 150,
+    hourly_rate: 36000,
+    task_category: "pleading",
+    description: "Bráðarýni á stefnu Sparisjóðs Austurlands í flýtimeðferð og mótun varnarorða vegna skorts á gjaldfellingarfresti.",
+    is_billable: true,
+    status: "unbilled",
+    created_at: "2026-09-08T14:30:00Z",
+  },
+  {
+    id: "time-08",
+    case_id: "case-04",
+    user_id: "usr-paralegal-01",
+    user_name: "Ásta Einarsdóttir lögfræðinemi",
+    user_role: "Aðstoðarmaður / Paralegal",
+    date: "2026-09-09",
+    duration_minutes: 90,
+    hourly_rate: 22000,
+    task_category: "discovery",
+    description: "Yfirferð bankayfirlita og greiðslukvittana Norðurfells ehf. til undirbúnings málsvarna fyrir greinargerðarfrest.",
+    is_billable: true,
+    status: "unbilled",
+    created_at: "2026-09-09T11:00:00Z",
+  },
+  {
+    id: "time-09",
+    case_id: "case-05",
+    user_id: "usr-lawyer-01",
+    user_name: "Guðrún Sigurðardóttir hrl.",
+    user_role: "Málflytjandi / Partner",
+    date: "2026-09-09",
+    duration_minutes: 180,
+    hourly_rate: 36000,
+    task_category: "pleading",
+    description: "Mótun stefnu og bráðakröfu um bráðabirgðaúrskurð dómara skv. 102. gr. eml. vegna lífsnauðsynlegrar krabbameinsmeðferðar.",
+    is_billable: true,
+    status: "unbilled",
+    created_at: "2026-09-09T16:00:00Z",
+  },
+  {
+    id: "time-10",
+    case_id: "case-05",
+    user_id: "usr-lawyer-01",
+    user_name: "Guðrún Sigurðardóttir hrl.",
+    user_role: "Málflytjandi / Partner",
+    date: "2026-09-10",
+    duration_minutes: 60,
+    hourly_rate: 36000,
+    task_category: "consultation",
+    description: "Samráð við lækna á krabbameinsdeild Landspítala vegna tímaramma meðferðar í Svíþjóð.",
+    is_billable: true,
+    status: "unbilled",
+    created_at: "2026-09-10T09:30:00Z",
+  },
 ];
 
 export const expensesStore: ExpenseItem[] = [
@@ -587,6 +819,30 @@ export const expensesStore: ExpenseItem[] = [
     incurred_date: "2026-09-02",
     status: "unbilled",
     created_at: "2026-09-02T10:00:00Z",
+  },
+  {
+    id: "exp-05",
+    case_id: "case-04",
+    expense_type: "court_fee",
+    title: "Þingfestingargjald í flýtimeðferðarmáli",
+    amount: 35000,
+    vat_rate: 0,
+    vat_amount: 0,
+    incurred_date: "2026-09-08",
+    status: "unbilled",
+    created_at: "2026-09-08T09:30:00Z",
+  },
+  {
+    id: "exp-06",
+    case_id: "case-05",
+    expense_type: "expert_appraisal",
+    title: "Sérfræðilegt bráðamat erlends sérfræðilæknis vegna ónæmismeðferðar",
+    amount: 120000,
+    vat_rate: 0.24,
+    vat_amount: 28800,
+    incurred_date: "2026-09-09",
+    status: "unbilled",
+    created_at: "2026-09-09T14:00:00Z",
   },
 ];
 
@@ -689,6 +945,28 @@ export const retainersStore: RetainerTransactionItem[] = [
     reference: "Innborgun á vörslureikning - Mál E-1089/2026",
     notes: "Tryggingafé vegna líkamstjónamáls",
     created_at: "2026-08-20T10:00:00Z",
+  },
+  {
+    id: "ret-04",
+    case_id: "case-04",
+    type: "deposit",
+    amount: 450000,
+    date: "2026-09-08",
+    payment_method: "bank_transfer",
+    reference: "Innborgun á vörslureikning - Mál E-1025/2026",
+    notes: "Tryggingafé vegna flýtimeðferðar og varna fyrir dómi",
+    created_at: "2026-09-08T11:00:00Z",
+  },
+  {
+    id: "ret-05",
+    case_id: "case-05",
+    type: "deposit",
+    amount: 500000,
+    date: "2026-09-09",
+    payment_method: "bank_transfer",
+    reference: "Innborgun á vörslureikning - Mál E-1218/2026",
+    notes: "Málskostnaðartrygging vegna bráðakröfu um bráðabirgðaúrskurð",
+    created_at: "2026-09-09T11:30:00Z",
   },
 ];
 
@@ -2470,7 +2748,7 @@ export interface DeadlineUrgencyResult {
 }
 
 /**
- * Parses YYYY-MM-DD (or ISO string) into a Date object.
+ * Parses YYYY-MM-DD (or ISO string or YYYY-MM-DD HH:mm) into a Date object.
  * Assumes end-of-business court closing time (16:00:00 local time) if only date is provided.
  */
 export function parseDeadlineToDate(targetDateStr: string): Date {
@@ -2480,12 +2758,37 @@ export function parseDeadlineToDate(targetDateStr: string): Date {
     return new Date(targetDateStr);
   }
 
+  // Handle "YYYY-MM-DD HH:mm"
+  if (targetDateStr.includes(" ")) {
+    const [datePart, timePart] = targetDateStr.split(" ");
+    const parts = (datePart || "").split("-").map((p) => parseInt(p, 10));
+    const [hh, mm] = (timePart || "16:00").split(":").map((p) => parseInt(p, 10));
+    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+      return new Date(parts[0], parts[1] - 1, parts[2], isNaN(hh) ? 16 : hh, isNaN(mm) ? 0 : mm, 0);
+    }
+  }
+
   const parts = targetDateStr.split("-").map((p) => parseInt(p, 10));
   if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
     return new Date(parts[0], parts[1] - 1, parts[2], 16, 0, 0);
   }
 
   return new Date(targetDateStr);
+}
+
+/**
+ * Formats a deadline target_date string nicely for UI display
+ */
+export function formatDeadlineToDisplay(targetDateStr: string): string {
+  if (!targetDateStr) return "";
+  if (targetDateStr.includes("T")) {
+    const d = new Date(targetDateStr);
+    if (!isNaN(d.getTime())) {
+      const pad = (n: number) => (n < 10 ? "0" + n : n);
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+  }
+  return targetDateStr;
 }
 
 /**
@@ -2731,6 +3034,10 @@ export function generateLocalLegalDraft(
       ? "kr. 21.400.000"
       : c.id === "case-03"
       ? "kr. 14.200.000"
+      : c.id === "case-04"
+      ? "kr. 35.800.000"
+      : c.id === "case-05"
+      ? "kr. 18.600.000"
       : "kr. 10.000.000");
 
   const header = `Í HÉRAÐSDÓMI REYKJAVÍKUR
