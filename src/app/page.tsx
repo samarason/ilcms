@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { LoginView } from "@/components/LoginView";
 import { BillingManagementTab } from "@/components/BillingManagementTab";
+import { LegalCompareModal } from "@/components/LegalCompareModal";
+import { evaluateCaseDeadlineUrgency, getDeadlineHoursRemaining } from "@/lib/deadline-urgency";
 
 export default function Dashboard() {
   const auth = useAuth() as any;
@@ -58,6 +60,9 @@ export default function Dashboard() {
   // New states for Statutory Deadline Engine, Court Bundle, Precedents, and Billing
   const [activeTab, setActiveTab] = useState<"docs" | "deadlines" | "bundle" | "law" | "billing">("docs");
   const [deadlines, setDeadlines] = useState<any[]>([]);
+  const [allDeadlines, setAllDeadlines] = useState<any[]>([]);
+  const [urgentFilterOnly, setUrgentFilterOnly] = useState<boolean>(false);
+  const [prioritizeUrgent, setPrioritizeUrgent] = useState<boolean>(true);
 
   // Global Billing Stopwatch State
   const [timerSeconds, setTimerSeconds] = useState(0);
@@ -99,6 +104,35 @@ export default function Dashboard() {
   const [statutes, setStatutes] = useState<any[]>([]);
   const [precedents, setPrecedents] = useState<any[]>([]);
   const [lawSearchQuery, setLawSearchQuery] = useState("");
+
+  // Legal Precedent & Statute Compare state
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [compareSelectedItems, setCompareSelectedItems] = useState<
+    Array<{ id: string; type: "precedent" | "statute"; label: string }>
+  >([]);
+
+  const isItemInCompare = (type: "precedent" | "statute", id: string) => {
+    return compareSelectedItems.some((item) => item.type === type && item.id === id);
+  };
+
+  const handleToggleCompareItem = (type: "precedent" | "statute", id: string, label: string) => {
+    setCompareSelectedItems((prev) => {
+      const exists = prev.some((item) => item.type === type && item.id === id);
+      if (exists) {
+        return prev.filter((item) => !(item.type === type && item.id === id));
+      }
+      if (prev.length >= 2) {
+        const updated = [prev[1], { id, type, label }];
+        setShowCompareModal(true);
+        return updated;
+      }
+      const updated = [...prev, { id, type, label }];
+      if (updated.length === 2) {
+        setShowCompareModal(true);
+      }
+      return updated;
+    });
+  };
 
   // Document Reader state
   const [selectedDoc, setSelectedDoc] = useState<any | null>(null);
@@ -229,6 +263,17 @@ export default function Dashboard() {
   const [savingNote, setSavingNote] = useState<boolean>(false);
   const [noteSaveStatus, setNoteSaveStatus] = useState<string>("");
 
+  const fetchAllDeadlines = async () => {
+    try {
+      const res = await fetch("/api/v1/deadlines");
+      if (res.ok) {
+        setAllDeadlines(await res.json());
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const fetchDeadlines = async (cid: string) => {
     if (!cid) return;
     try {
@@ -236,6 +281,7 @@ export default function Dashboard() {
       if (res.ok) {
         setDeadlines(await res.json());
       }
+      fetchAllDeadlines();
     } catch (e) {
       console.error(e);
     }
@@ -370,6 +416,7 @@ export default function Dashboard() {
     fetchCases();
     fetchSystemStatus();
     fetchPrecedents();
+    fetchAllDeadlines();
   }, [token]);
 
   useEffect(() => {
@@ -706,11 +753,42 @@ export default function Dashboard() {
     sendQueryToAi(promptText);
   };
 
-  const filteredCases = cases.filter(
-    (c) =>
-      c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.case_number.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const casesWithUrgency = useMemo(() => {
+    return cases.map((c) => {
+      const urgency = evaluateCaseDeadlineUrgency(c.id, allDeadlines);
+      return { ...c, urgency };
+    });
+  }, [cases, allDeadlines]);
+
+  const urgentCasesCount = useMemo(() => {
+    return casesWithUrgency.filter((c) => c.urgency.isUrgent48h).length;
+  }, [casesWithUrgency]);
+
+  const filteredCases = useMemo(() => {
+    let list = casesWithUrgency.filter(
+      (c) =>
+        c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.case_number.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    if (urgentFilterOnly) {
+      list = list.filter((c) => c.urgency.isUrgent48h);
+    }
+
+    if (prioritizeUrgent) {
+      // Sort cases with urgent deadlines within 48h to the top, ordered by fewest hours remaining
+      list = [...list].sort((a, b) => {
+        if (a.urgency.isUrgent48h && !b.urgency.isUrgent48h) return -1;
+        if (!a.urgency.isUrgent48h && b.urgency.isUrgent48h) return 1;
+        if (a.urgency.isUrgent48h && b.urgency.isUrgent48h) {
+          return a.urgency.hoursRemaining - b.urgency.hoursRemaining;
+        }
+        return 0;
+      });
+    }
+
+    return list;
+  }, [casesWithUrgency, searchQuery, urgentFilterOnly, prioritizeUrgent]);
 
   if (!user || !auth?.isAuthenticated) {
     return <LoginView />;
@@ -880,10 +958,25 @@ export default function Dashboard() {
             flexDirection: "column",
           }}
         >
-          <div style={{ padding: "14px", borderBottom: "1px solid #e2e8f0" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-              <h3 style={{ margin: 0, fontSize: "0.95rem", color: "#0f172a" }}>Málaskrá</h3>
+          <div style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <h3 style={{ margin: 0, fontSize: "0.95rem", color: "#0f172a" }}>Málaskrá</h3>
+                <span
+                  style={{
+                    fontSize: "0.7rem",
+                    background: "#f1f5f9",
+                    color: "#475569",
+                    padding: "1px 6px",
+                    borderRadius: "10px",
+                    fontWeight: 600,
+                  }}
+                >
+                  {cases.length}
+                </span>
+              </div>
               <button
+                id="btn-new-case"
                 onClick={() => setShowNewCase(true)}
                 style={{
                   background: "#2563eb",
@@ -898,6 +991,145 @@ export default function Dashboard() {
                 + Nýtt mál
               </button>
             </div>
+
+            {/* Urgent Deadlines (<48h) Filter & Prioritize Toggles */}
+            <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
+              <button
+                id="btn-filter-all-cases"
+                type="button"
+                onClick={() => setUrgentFilterOnly(false)}
+                style={{
+                  flex: 1,
+                  padding: "5px 6px",
+                  borderRadius: "4px",
+                  fontSize: "0.74rem",
+                  fontWeight: !urgentFilterOnly ? 700 : 500,
+                  background: !urgentFilterOnly ? "#2563eb" : "#f1f5f9",
+                  color: !urgentFilterOnly ? "#ffffff" : "#475569",
+                  border: !urgentFilterOnly ? "1px solid #1d4ed8" : "1px solid #cbd5e1",
+                  cursor: "pointer",
+                  textAlign: "center",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Öll mál ({cases.length})
+              </button>
+              <button
+                id="btn-filter-urgent-deadlines"
+                type="button"
+                onClick={() => setUrgentFilterOnly(true)}
+                style={{
+                  flex: 1.3,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "4px",
+                  padding: "5px 6px",
+                  borderRadius: "4px",
+                  fontSize: "0.74rem",
+                  fontWeight: urgentFilterOnly ? 700 : 600,
+                  background: urgentFilterOnly
+                    ? "#dc2626"
+                    : urgentCasesCount > 0
+                    ? "#fee2e2"
+                    : "#f8fafc",
+                  color: urgentFilterOnly
+                    ? "#ffffff"
+                    : urgentCasesCount > 0
+                    ? "#b91c1c"
+                    : "#64748b",
+                  border: urgentFilterOnly
+                    ? "1px solid #b91c1c"
+                    : urgentCasesCount > 0
+                    ? "1px solid #fca5a5"
+                    : "1px solid #cbd5e1",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <span>🚨</span>
+                <span>Innan 48 klst</span>
+                <span
+                  style={{
+                    background: urgentFilterOnly
+                      ? "#ffffff"
+                      : urgentCasesCount > 0
+                      ? "#dc2626"
+                      : "#94a3b8",
+                    color: urgentFilterOnly ? "#dc2626" : "#ffffff",
+                    padding: "1px 5px",
+                    borderRadius: "8px",
+                    fontSize: "0.68rem",
+                    fontWeight: 700,
+                  }}
+                >
+                  {urgentCasesCount}
+                </span>
+              </button>
+            </div>
+
+            {/* Quick Priority Sorting Toggle */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  fontSize: "0.72rem",
+                  color: "#475569",
+                  cursor: "pointer",
+                  userSelect: "none",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={prioritizeUrgent}
+                  onChange={(e) => setPrioritizeUrgent(e.target.checked)}
+                  style={{ cursor: "pointer", accentColor: "#dc2626" }}
+                />
+                <span>Forgangsraða aðkallandi frestum efst</span>
+              </label>
+              {urgentCasesCount > 0 && (
+                <span style={{ fontSize: "0.68rem", color: "#dc2626", fontWeight: 600 }}>
+                  {urgentCasesCount} mál krefjast aðgerða
+                </span>
+              )}
+            </div>
+
+            {urgentFilterOnly && (
+              <div
+                style={{
+                  background: "#fee2e2",
+                  border: "1px solid #fca5a5",
+                  borderRadius: "4px",
+                  padding: "4px 8px",
+                  marginBottom: "8px",
+                  fontSize: "0.72rem",
+                  color: "#991b1b",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span>Sýnir eingöngu mál með fresti &lt; 48 klst</span>
+                <button
+                  type="button"
+                  onClick={() => setUrgentFilterOnly(false)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#b91c1c",
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                >
+                  Afvirkja
+                </button>
+              </div>
+            )}
+
             <input
               type="text"
               placeholder="Leita í málum..."
@@ -914,40 +1146,137 @@ export default function Dashboard() {
             />
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "8px" }}>
-            {filteredCases.map((c) => (
-              <div
-                key={c.id}
-                onClick={() => setSelectedCaseId(c.id)}
-                style={{
-                  padding: "10px",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  background: selectedCaseId === c.id ? "#eff6ff" : "#fff",
-                  border: selectedCaseId === c.id ? "1px solid #3b82f6" : "1px solid #f1f5f9",
-                  marginBottom: "6px",
-                  boxShadow: selectedCaseId === c.id ? "0 1px 2px rgba(59,130,246,0.1)" : "none",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
-                  <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#2563eb" }}>{c.case_number}</span>
-                  <span style={{ fontSize: "0.7rem", color: "#64748b" }}>{c.status}</span>
-                </div>
-                <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "#1e293b", marginBottom: "3px" }}>
-                  {c.title}
-                </div>
-                <div
-                  style={{
-                    fontSize: "0.75rem",
-                    color: "#64748b",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {c.description}
-                </div>
+            {filteredCases.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "20px 10px", color: "#94a3b8", fontSize: "0.82rem" }}>
+                {urgentFilterOnly
+                  ? "Engin mál með lögboðna fresti innan næstu 48 klst."
+                  : "Engin mál fundust sem passa við leit."}
               </div>
-            ))}
+            ) : (
+              filteredCases.map((c) => {
+                const isSelected = selectedCaseId === c.id;
+                const { urgency } = c;
+                const hasAlert = urgency.isUrgent48h;
+
+                return (
+                  <div
+                    key={c.id}
+                    id={`case-card-${c.id}`}
+                    onClick={() => setSelectedCaseId(c.id)}
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      background: isSelected
+                        ? "#eff6ff"
+                        : hasAlert
+                        ? urgency.urgencyLevel === "critical"
+                          ? "#fff8f8"
+                          : "#fffdf5"
+                        : "#fff",
+                      border: isSelected
+                        ? "1px solid #3b82f6"
+                        : hasAlert
+                        ? urgency.urgencyLevel === "critical"
+                          ? "1px solid #fecaca"
+                          : "1px solid #fde68a"
+                        : "1px solid #e2e8f0",
+                      borderLeft: hasAlert
+                        ? urgency.urgencyLevel === "critical"
+                          ? "4px solid #dc2626"
+                          : "4px solid #d97706"
+                        : isSelected
+                        ? "4px solid #2563eb"
+                        : "1px solid #e2e8f0",
+                      marginBottom: "8px",
+                      boxShadow: isSelected
+                        ? "0 1px 3px rgba(59,130,246,0.15)"
+                        : hasAlert
+                        ? "0 1px 2px rgba(0,0,0,0.05)"
+                        : "0 1px 2px rgba(0,0,0,0.02)",
+                      transition: "all 0.15s ease",
+                      position: "relative",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                      <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#2563eb" }}>{c.case_number}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        {hasAlert && (
+                          <span
+                            id={`badge-urgent-deadline-${c.id}`}
+                            title={`${urgency.closestDeadline?.name} (${urgency.closestDeadline?.target_date}) - ${urgency.closestDeadline?.statutory_reference}`}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "3px",
+                              fontSize: "0.68rem",
+                              fontWeight: 700,
+                              padding: "2px 7px",
+                              borderRadius: "10px",
+                              background: urgency.badgeColor.bg,
+                              color: urgency.badgeColor.text,
+                              border: `1px solid ${urgency.badgeColor.border}`,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            <span>{urgency.badgeColor.icon}</span>
+                            <span>{urgency.badgeText}</span>
+                          </span>
+                        )}
+                        <span style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 500 }}>{c.status}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "#0f172a", marginBottom: "3px", lineHeight: 1.3 }}>
+                      {c.title}
+                    </div>
+
+                    {/* Urgent Deadline Sub-Strip if within 48 hours */}
+                    {hasAlert && urgency.closestDeadline && (
+                      <div
+                        id={`urgent-strip-${c.id}`}
+                        style={{
+                          margin: "5px 0",
+                          padding: "4px 8px",
+                          borderRadius: "4px",
+                          background: urgency.urgencyLevel === "critical" ? "#fee2e2" : "#fef3c7",
+                          border: urgency.urgencyLevel === "critical" ? "1px solid #fca5a5" : "1px solid #fde68a",
+                          fontSize: "0.72rem",
+                          color: urgency.urgencyLevel === "critical" ? "#991b1b" : "#92400e",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "6px",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px", overflow: "hidden" }}>
+                          <span style={{ fontWeight: 700, flexShrink: 0 }}>🚨 Frestur:</span>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {urgency.closestDeadline.name}
+                          </span>
+                        </div>
+                        <span style={{ fontWeight: 700, flexShrink: 0, fontSize: "0.7rem" }}>
+                          {urgency.closestDeadline.target_date}
+                        </span>
+                      </div>
+                    )}
+
+                    <div
+                      style={{
+                        fontSize: "0.74rem",
+                        color: "#64748b",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        marginTop: hasAlert ? "2px" : "0",
+                      }}
+                    >
+                      {c.description}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </section>
 
@@ -955,6 +1284,91 @@ export default function Dashboard() {
         <section style={{ padding: "20px", overflowY: "auto", background: "#f8fafc" }}>
           {activeCase ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {/* Urgent Deadline Alert Banner (<48 hours) */}
+              {(() => {
+                const activeCaseUrgency = evaluateCaseDeadlineUrgency(activeCase.id, allDeadlines);
+                if (!activeCaseUrgency.isUrgent48h || !activeCaseUrgency.closestDeadline) return null;
+                const dl = activeCaseUrgency.closestDeadline;
+                const isCrit = activeCaseUrgency.urgencyLevel === "critical";
+
+                return (
+                  <div
+                    id={`active-case-urgent-alert-${activeCase.id}`}
+                    style={{
+                      background: isCrit ? "#fef2f2" : "#fffbeb",
+                      border: isCrit ? "1px solid #f87171" : "1px solid #fcd34d",
+                      borderLeft: isCrit ? "5px solid #dc2626" : "5px solid #d97706",
+                      borderRadius: "6px",
+                      padding: "12px 16px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "12px",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <span style={{ fontSize: "1.3rem" }}>{isCrit ? "🚨" : "⚠️"}</span>
+                      <div>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            fontSize: "0.86rem",
+                            color: isCrit ? "#991b1b" : "#92400e",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                          }}
+                        >
+                          <span>Aðkallandi lögboðinn frestur innan 48 klukkustunda!</span>
+                          <span
+                            style={{
+                              fontSize: "0.7rem",
+                              padding: "1px 6px",
+                              borderRadius: "4px",
+                              background: isCrit ? "#fee2e2" : "#fef3c7",
+                              color: isCrit ? "#b91c1c" : "#b45309",
+                              border: isCrit ? "1px solid #fca5a5" : "1px solid #fcd34d",
+                            }}
+                          >
+                            {activeCaseUrgency.badgeText}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: "0.78rem", color: isCrit ? "#b91c1c" : "#b45309", marginTop: "3px" }}>
+                          <strong>{dl.name}</strong> • Gjalddagi: <strong>{dl.target_date}</strong> (
+                          {activeCaseUrgency.hoursRemaining <= 0
+                            ? "Útrunnið!"
+                            : `${Math.round(activeCaseUrgency.hoursRemaining)} klst eftir`}
+                          ) • Lagastoð: <em>{dl.statutory_reference}</em>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      id="btn-jump-to-urgent-deadline"
+                      type="button"
+                      onClick={() => setActiveTab("deadlines")}
+                      style={{
+                        background: isCrit ? "#dc2626" : "#d97706",
+                        color: "#fff",
+                        border: "none",
+                        padding: "6px 14px",
+                        borderRadius: "4px",
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <span>Skoða í frestaskrá</span>
+                      <span>➔</span>
+                    </button>
+                  </div>
+                );
+              })()}
+
               {/* Active Case Header */}
               <div
                 style={{
@@ -1087,6 +1501,7 @@ export default function Dashboard() {
                   📄 Málsskjöl ({docs.length})
                 </button>
                 <button
+                  id="tab-btn-deadlines"
                   onClick={() => setActiveTab("deadlines")}
                   style={{
                     padding: "8px 14px",
@@ -1102,12 +1517,40 @@ export default function Dashboard() {
                     gap: "6px",
                   }}
                 >
-                  ⏱️ Frestareiknivél (80. gr.)
-                  {deadlines.length > 0 && (
-                    <span style={{ fontSize: "0.7rem", background: "#fef3c7", color: "#92400e", padding: "1px 6px", borderRadius: "10px" }}>
-                      {deadlines.length}
-                    </span>
-                  )}
+                  ⏱️ Frestir & Reiknivél
+                  {(() => {
+                    const urgency = evaluateCaseDeadlineUrgency(activeCase.id, allDeadlines);
+                    if (urgency.isUrgent48h) {
+                      return (
+                        <span
+                          id="badge-tab-urgent"
+                          style={{
+                            fontSize: "0.68rem",
+                            background: urgency.urgencyLevel === "critical" ? "#fee2e2" : "#fef3c7",
+                            color: urgency.urgencyLevel === "critical" ? "#b91c1c" : "#92400e",
+                            border: `1px solid ${urgency.urgencyLevel === "critical" ? "#fca5a5" : "#fcd34d"}`,
+                            padding: "1px 6px",
+                            borderRadius: "10px",
+                            fontWeight: 700,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "2px",
+                          }}
+                        >
+                          <span>{urgency.urgencyLevel === "critical" ? "🚨" : "⚠️"}</span>
+                          <span>&lt; 48 klst</span>
+                        </span>
+                      );
+                    }
+                    if (deadlines.length > 0) {
+                      return (
+                        <span style={{ fontSize: "0.7rem", background: "#fef3c7", color: "#92400e", padding: "1px 6px", borderRadius: "10px" }}>
+                          {deadlines.length}
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
                 </button>
                 <button
                   onClick={() => setActiveTab("bundle")}
@@ -1810,60 +2253,105 @@ export default function Dashboard() {
                       </div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                        {deadlines.map((d: any) => (
-                          <div
-                            key={d.id}
-                            style={{
-                              padding: "10px 14px",
-                              borderRadius: "6px",
-                              background: "#f8fafc",
-                              border: "1px solid #e2e8f0",
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                            }}
-                          >
-                            <div>
-                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <span style={{ fontWeight: 600, fontSize: "0.88rem", color: "#0f172a" }}>
-                                  {d.name}
-                                </span>
+                        {deadlines.map((d: any) => {
+                          const hours = getDeadlineHoursRemaining(d.target_date);
+                          const isOverdue = hours < 0;
+                          const isUnder24 = hours >= 0 && hours <= 24;
+                          const isUnder48 = hours > 24 && hours <= 48;
+                          const isUrgent48 = isOverdue || isUnder24 || isUnder48;
+                          const isCrit = isOverdue || isUnder24;
+
+                          return (
+                            <div
+                              key={d.id}
+                              id={`case-deadline-item-${d.id}`}
+                              style={{
+                                padding: "12px 14px",
+                                borderRadius: "6px",
+                                background: isCrit ? "#fef2f2" : isUnder48 ? "#fffbeb" : "#f8fafc",
+                                border: isCrit ? "1px solid #fca5a5" : isUnder48 ? "1px solid #fde68a" : "1px solid #e2e8f0",
+                                borderLeft: isCrit ? "4px solid #dc2626" : isUnder48 ? "4px solid #d97706" : "1px solid #e2e8f0",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                transition: "all 0.15s ease",
+                              }}
+                            >
+                              <div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                                  <span style={{ fontWeight: 600, fontSize: "0.88rem", color: "#0f172a" }}>
+                                    {d.name}
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: "0.7rem",
+                                      padding: "2px 6px",
+                                      borderRadius: "4px",
+                                      background: isCrit ? "#fee2e2" : isUnder48 ? "#fef3c7" : "#e0f2fe",
+                                      color: isCrit ? "#b91c1c" : isUnder48 ? "#b45309" : "#0369a1",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    {d.statutory_reference}
+                                  </span>
+                                  {isUrgent48 && (
+                                    <span
+                                      style={{
+                                        fontSize: "0.68rem",
+                                        padding: "1px 6px",
+                                        borderRadius: "10px",
+                                        fontWeight: 700,
+                                        background: isCrit ? "#fee2e2" : "#fef3c7",
+                                        color: isCrit ? "#991b1b" : "#92400e",
+                                        border: isCrit ? "1px solid #fca5a5" : "1px solid #fcd34d",
+                                      }}
+                                    >
+                                      {isOverdue
+                                        ? "🚨 Útrunnið!"
+                                        : isUnder24
+                                        ? `🚨 Innan 24 klst (${Math.max(1, Math.round(hours))} klst)`
+                                        : `⚠️ Innan 48 klst (${Math.round(hours)} klst)`}
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>
+                                  {d.description}
+                                </div>
+                              </div>
+                              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                                <div
+                                  style={{
+                                    fontWeight: 700,
+                                    fontSize: "0.95rem",
+                                    color: isCrit ? "#dc2626" : isUnder48 ? "#d97706" : "#0f172a",
+                                  }}
+                                >
+                                  {d.target_date}
+                                </div>
                                 <span
                                   style={{
                                     fontSize: "0.7rem",
                                     padding: "2px 6px",
                                     borderRadius: "4px",
-                                    background: d.status === "urgent" ? "#fee2e2" : "#e0f2fe",
-                                    color: d.status === "urgent" ? "#b91c1c" : "#0369a1",
+                                    background: isCrit ? "#ef4444" : isUnder48 ? "#f59e0b" : "#10b981",
+                                    color: "#fff",
                                     fontWeight: 600,
+                                    display: "inline-block",
+                                    marginTop: "2px",
                                   }}
                                 >
-                                  {d.statutory_reference}
+                                  {isOverdue
+                                    ? "Útrunnið"
+                                    : isCrit
+                                    ? "Aðkallandi (<24h)"
+                                    : isUnder48
+                                    ? "Aðkallandi (<48h)"
+                                    : "Í gildi"}
                                 </span>
                               </div>
-                              <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "2px" }}>
-                                {d.description}
-                              </div>
                             </div>
-                            <div style={{ textAlign: "right" }}>
-                              <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#0f172a" }}>
-                                {d.target_date}
-                              </div>
-                              <span
-                                style={{
-                                  fontSize: "0.7rem",
-                                  padding: "2px 6px",
-                                  borderRadius: "4px",
-                                  background: d.status === "urgent" ? "#ef4444" : "#10b981",
-                                  color: "#fff",
-                                  fontWeight: 500,
-                                }}
-                              >
-                                {d.status === "urgent" ? "Aðkallandi" : "Í gildi"}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -2036,7 +2524,7 @@ export default function Dashboard() {
                       boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "10px" }}>
                       <div>
                         <h3 style={{ margin: 0, fontSize: "1.05rem", color: "#0f172a" }}>
                           Laga- og dómasafn í pgvector
@@ -2045,19 +2533,134 @@ export default function Dashboard() {
                           Forsendur og fordæmi Hæstaréttar og Landsréttar innbyggð í staðbundna vigragrunninn
                         </div>
                       </div>
-                      <span
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <button
+                          id="btn-compare-precedents-statutes"
+                          type="button"
+                          onClick={() => setShowCompareModal(true)}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            background: compareSelectedItems.length > 0 ? "#1d4ed8" : "#2563eb",
+                            color: "#ffffff",
+                            padding: "6px 14px",
+                            borderRadius: "6px",
+                            border: "1px solid #1e40af",
+                            fontSize: "0.82rem",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
+                          }}
+                        >
+                          <span>⚖️</span>
+                          <span>Bera saman (Compare)</span>
+                          {compareSelectedItems.length > 0 && (
+                            <span
+                              style={{
+                                background: "#ffffff",
+                                color: "#1d4ed8",
+                                padding: "1px 6px",
+                                borderRadius: "10px",
+                                fontSize: "0.72rem",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {compareSelectedItems.length}/2 valin
+                            </span>
+                          )}
+                        </button>
+                        <span
+                          style={{
+                            fontSize: "0.72rem",
+                            background: "#f1f5f9",
+                            color: "#334155",
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            border: "1px solid #cbd5e1",
+                          }}
+                        >
+                          nomic-embed-text (768d)
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Comparison Selection Banner */}
+                    {compareSelectedItems.length > 0 && (
+                      <div
+                        id="compare-selection-banner"
                         style={{
-                          fontSize: "0.72rem",
-                          background: "#f1f5f9",
-                          color: "#334155",
-                          padding: "3px 8px",
-                          borderRadius: "4px",
-                          border: "1px solid #cbd5e1",
+                          background: "#eff6ff",
+                          border: "1px solid #bfdbfe",
+                          borderRadius: "6px",
+                          padding: "8px 12px",
+                          marginBottom: "14px",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          fontSize: "0.82rem",
+                          color: "#1e40af",
+                          flexWrap: "wrap",
+                          gap: "8px",
                         }}
                       >
-                        nomic-embed-text (768d)
-                      </span>
-                    </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                          <span style={{ fontWeight: 700 }}>Valið til samanburðar ({compareSelectedItems.length}/2):</span>
+                          {compareSelectedItems.map((item, idx) => (
+                            <span
+                              key={idx}
+                              style={{
+                                background: "#ffffff",
+                                border: "1px solid #93c5fd",
+                                padding: "2px 8px",
+                                borderRadius: "4px",
+                                fontWeight: 600,
+                                fontSize: "0.76rem",
+                              }}
+                            >
+                              {item.type === "precedent" ? "⚖️" : "📜"} {item.label}
+                            </span>
+                          ))}
+                          {compareSelectedItems.length === 1 && (
+                            <span style={{ color: "#3b82f6", fontStyle: "italic", fontSize: "0.76rem" }}>
+                              (Veldu annan lið til viðbótar til að opna samanburð)
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <button
+                            type="button"
+                            onClick={() => setShowCompareModal(true)}
+                            style={{
+                              background: "#2563eb",
+                              color: "#fff",
+                              border: "none",
+                              padding: "4px 10px",
+                              borderRadius: "4px",
+                              fontSize: "0.76rem",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Opna samanburð ➔
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCompareSelectedItems([])}
+                            style={{
+                              background: "transparent",
+                              color: "#64748b",
+                              border: "none",
+                              fontSize: "0.76rem",
+                              cursor: "pointer",
+                              textDecoration: "underline",
+                            }}
+                          >
+                            Hreinsa val
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     <input
                       type="text"
@@ -2089,9 +2692,10 @@ export default function Dashboard() {
                             key={p.id}
                             style={{
                               padding: "12px 14px",
-                              background: "#f8fafc",
+                              background: isItemInCompare("precedent", p.id) ? "#eff6ff" : "#f8fafc",
                               borderRadius: "6px",
-                              border: "1px solid #e2e8f0",
+                              border: isItemInCompare("precedent", p.id) ? "1px solid #93c5fd" : "1px solid #e2e8f0",
+                              transition: "all 0.15s ease",
                             }}
                           >
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "4px" }}>
@@ -2103,21 +2707,45 @@ export default function Dashboard() {
                                   {p.court} ({p.date})
                                 </span>
                               </div>
-                              <button
-                                onClick={() => handleAskAboutPrecedent(p.case_reference, "precedent", p.parties)}
-                                style={{
-                                  background: "#f1f5f9",
-                                  border: "1px solid #cbd5e1",
-                                  color: "#2563eb",
-                                  padding: "3px 8px",
-                                  borderRadius: "4px",
-                                  fontSize: "0.75rem",
-                                  cursor: "pointer",
-                                  fontWeight: 500,
-                                }}
-                              >
-                                💬 Spyrja AI um þetta
-                              </button>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <button
+                                  id={`btn-compare-p-${p.id}`}
+                                  type="button"
+                                  onClick={() => handleToggleCompareItem("precedent", p.id, p.case_reference)}
+                                  style={{
+                                    background: isItemInCompare("precedent", p.id) ? "#dbeafe" : "#f1f5f9",
+                                    border: isItemInCompare("precedent", p.id) ? "1px solid #3b82f6" : "1px solid #cbd5e1",
+                                    color: isItemInCompare("precedent", p.id) ? "#1d4ed8" : "#334155",
+                                    padding: "3px 8px",
+                                    borderRadius: "4px",
+                                    fontSize: "0.75rem",
+                                    cursor: "pointer",
+                                    fontWeight: 500,
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                  }}
+                                >
+                                  <span>{isItemInCompare("precedent", p.id) ? "✓" : "⚖️"}</span>
+                                  {isItemInCompare("precedent", p.id) ? "Valið í samanburð" : "Bera saman"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAskAboutPrecedent(p.case_reference, "precedent", p.parties)}
+                                  style={{
+                                    background: "#f1f5f9",
+                                    border: "1px solid #cbd5e1",
+                                    color: "#2563eb",
+                                    padding: "3px 8px",
+                                    borderRadius: "4px",
+                                    fontSize: "0.75rem",
+                                    cursor: "pointer",
+                                    fontWeight: 500,
+                                  }}
+                                >
+                                  💬 Spyrja AI um þetta
+                                </button>
+                              </div>
                             </div>
                             <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
                               {p.parties}
@@ -2144,30 +2772,55 @@ export default function Dashboard() {
                             key={s.id}
                             style={{
                               padding: "12px 14px",
-                              background: "#f0fdf4",
+                              background: isItemInCompare("statute", s.id) ? "#dcfce7" : "#f0fdf4",
                               borderRadius: "6px",
-                              border: "1px solid #bbf7d0",
+                              border: isItemInCompare("statute", s.id) ? "1px solid #4ade80" : "1px solid #bbf7d0",
+                              transition: "all 0.15s ease",
                             }}
                           >
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "4px" }}>
                               <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "#15803d" }}>
                                 {s.act_name} {s.act_number} — {s.article} ({s.title})
                               </span>
-                              <button
-                                onClick={() => handleAskAboutPrecedent(`${s.article} laga nr. ${s.act_number}`, "statute", `${s.title} (${s.act_name})`)}
-                                style={{
-                                  background: "#fff",
-                                  border: "1px solid #86efac",
-                                  color: "#166534",
-                                  padding: "3px 8px",
-                                  borderRadius: "4px",
-                                  fontSize: "0.75rem",
-                                  cursor: "pointer",
-                                  fontWeight: 500,
-                                }}
-                              >
-                                💬 Spyrja AI
-                              </button>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <button
+                                  id={`btn-compare-s-${s.id}`}
+                                  type="button"
+                                  onClick={() => handleToggleCompareItem("statute", s.id, `${s.article} ${s.title}`)}
+                                  style={{
+                                    background: isItemInCompare("statute", s.id) ? "#dcfce7" : "#fff",
+                                    border: isItemInCompare("statute", s.id) ? "1px solid #22c55e" : "1px solid #86efac",
+                                    color: isItemInCompare("statute", s.id) ? "#15803d" : "#166534",
+                                    padding: "3px 8px",
+                                    borderRadius: "4px",
+                                    fontSize: "0.75rem",
+                                    cursor: "pointer",
+                                    fontWeight: 500,
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                  }}
+                                >
+                                  <span>{isItemInCompare("statute", s.id) ? "✓" : "⚖️"}</span>
+                                  {isItemInCompare("statute", s.id) ? "Valið í samanburð" : "Bera saman"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAskAboutPrecedent(`${s.article} laga nr. ${s.act_number}`, "statute", `${s.title} (${s.act_name})`)}
+                                  style={{
+                                    background: "#fff",
+                                    border: "1px solid #86efac",
+                                    color: "#166534",
+                                    padding: "3px 8px",
+                                    borderRadius: "4px",
+                                    fontSize: "0.75rem",
+                                    cursor: "pointer",
+                                    fontWeight: 500,
+                                  }}
+                                >
+                                  💬 Spyrja AI
+                                </button>
+                              </div>
                             </div>
                             <p style={{ margin: 0, fontSize: "0.82rem", color: "#166534", lineHeight: 1.45 }}>
                               {s.text}
@@ -4789,6 +5442,19 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      )}
+      {/* Legal Precedents & Statutes Comparison Modal */}
+      {showCompareModal && (
+        <LegalCompareModal
+          isOpen={showCompareModal}
+          onClose={() => setShowCompareModal(false)}
+          precedents={precedents}
+          statutes={statutes}
+          initialItemAId={compareSelectedItems[0]?.id || null}
+          initialItemAType={compareSelectedItems[0]?.type || undefined}
+          initialItemBId={compareSelectedItems[1]?.id || null}
+          initialItemBType={compareSelectedItems[1]?.type || undefined}
+        />
       )}
     </div>
   );
