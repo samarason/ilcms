@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { LoginView } from "@/components/LoginView";
+import { BillingManagementTab } from "@/components/BillingManagementTab";
 
 export default function Dashboard() {
   const auth = useAuth() as any;
@@ -54,9 +55,34 @@ export default function Dashboard() {
     setUserHasScrolledUp(isUp);
   };
 
-  // New states for Statutory Deadline Engine, Court Bundle, and Precedents
-  const [activeTab, setActiveTab] = useState<"docs" | "deadlines" | "bundle" | "law">("docs");
+  // New states for Statutory Deadline Engine, Court Bundle, Precedents, and Billing
+  const [activeTab, setActiveTab] = useState<"docs" | "deadlines" | "bundle" | "law" | "billing">("docs");
   const [deadlines, setDeadlines] = useState<any[]>([]);
+
+  // Global Billing Stopwatch State
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (isTimerRunning) {
+      timerRef.current = setInterval(() => {
+        setTimerSeconds((prev) => prev + 1);
+      }, 1000);
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isTimerRunning]);
+
+  const handleStartTimer = () => setIsTimerRunning(true);
+  const handleStopTimer = () => setIsTimerRunning(false);
+  const handleResetTimer = () => {
+    setIsTimerRunning(false);
+    setTimerSeconds(0);
+  };
   const [serviceDate, setServiceDate] = useState("2026-09-08");
   const [defendantLocation, setDefendantLocation] = useState<"same_district" | "other_district" | "europe" | "outside_europe">("other_district");
   const [grantDefenseWeeks, setGrantDefenseWeeks] = useState(3);
@@ -957,15 +983,70 @@ export default function Dashboard() {
                       Staða: <strong>{activeCase.status}</strong>
                     </span>
                   </div>
-                  <span
-                    style={{
-                      fontSize: "0.75rem",
-                      color: activeCase.priority === "HIGH" ? "#dc2626" : "#475569",
-                      fontWeight: 600,
-                    }}
-                  >
-                    Forgangur: {activeCase.priority}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    {/* Header Quick Stopwatch */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        background: isTimerRunning ? "#eff6ff" : "#f1f5f9",
+                        border: isTimerRunning ? "1px solid #3b82f6" : "1px solid #e2e8f0",
+                        padding: "2px 8px",
+                        borderRadius: "6px",
+                      }}
+                    >
+                      <span style={{ fontSize: "0.78rem" }}>⏱️</span>
+                      <span style={{ fontSize: "0.78rem", fontFamily: "monospace", fontWeight: 700, color: isTimerRunning ? "#1d4ed8" : "#475569" }}>
+                        {Math.floor(timerSeconds / 60).toString().padStart(2, "0")}:{(timerSeconds % 60).toString().padStart(2, "0")}
+                      </span>
+                      {!isTimerRunning ? (
+                        <button
+                          onClick={handleStartTimer}
+                          style={{
+                            background: "#16a34a",
+                            color: "#fff",
+                            border: "none",
+                            padding: "1px 6px",
+                            borderRadius: "3px",
+                            fontSize: "0.7rem",
+                            cursor: "pointer",
+                            fontWeight: 600,
+                          }}
+                          title="Ræsa tímatöku"
+                        >
+                          ▶ Ræsa
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleStopTimer}
+                          style={{
+                            background: "#dc2626",
+                            color: "#fff",
+                            border: "none",
+                            padding: "1px 6px",
+                            borderRadius: "3px",
+                            fontSize: "0.7rem",
+                            cursor: "pointer",
+                            fontWeight: 600,
+                          }}
+                          title="Stöðva tímatöku"
+                        >
+                          ⏸ Stöðva
+                        </button>
+                      )}
+                    </div>
+
+                    <span
+                      style={{
+                        fontSize: "0.75rem",
+                        color: activeCase.priority === "HIGH" ? "#dc2626" : "#475569",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Forgangur: {activeCase.priority}
+                    </span>
+                  </div>
                 </div>
                 <h2 style={{ margin: "4px 0 8px 0", fontSize: "1.25rem", color: "#0f172a" }}>
                   {activeCase.title}
@@ -984,6 +1065,7 @@ export default function Dashboard() {
                   background: "#fff",
                   padding: "6px 12px 0 12px",
                   borderRadius: "8px 8px 0 0",
+                  flexWrap: "wrap",
                 }}
               >
                 <button
@@ -1062,6 +1144,29 @@ export default function Dashboard() {
                   }}
                 >
                   ⚖️ Laga- og dómasafn
+                </button>
+                <button
+                  onClick={() => setActiveTab("billing")}
+                  style={{
+                    padding: "8px 14px",
+                    background: activeTab === "billing" ? "#eff6ff" : "transparent",
+                    color: activeTab === "billing" ? "#2563eb" : "#64748b",
+                    border: "none",
+                    borderBottom: activeTab === "billing" ? "2px solid #2563eb" : "2px solid transparent",
+                    fontWeight: activeTab === "billing" ? 600 : 500,
+                    cursor: "pointer",
+                    fontSize: "0.85rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  💰 Tímar & Málskostnaður (130. gr.)
+                  {isTimerRunning && (
+                    <span style={{ fontSize: "0.68rem", background: "#ef4444", color: "#fff", padding: "1px 6px", borderRadius: "10px", fontWeight: 700 }}>
+                      Í GANGI
+                    </span>
+                  )}
                 </button>
               </div>
 
@@ -2073,6 +2178,23 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </div>
+              )}
+
+              {/* TAB 5: BILLING & COURT COST STATEMENT (130. gr. eml.) */}
+              {activeTab === "billing" && (
+                <BillingManagementTab
+                  activeCase={activeCase}
+                  onDocumentCreated={() => {
+                    if (selectedCaseId) {
+                      fetchDocs(selectedCaseId);
+                    }
+                  }}
+                  timerSeconds={timerSeconds}
+                  isTimerRunning={isTimerRunning}
+                  onStartTimer={handleStartTimer}
+                  onStopTimer={handleStopTimer}
+                  onResetTimer={handleResetTimer}
+                />
               )}
             </div>
           ) : (

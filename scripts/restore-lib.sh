@@ -124,6 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   return useContext(AuthContext);
 }
+
 EOF
 fi
 
@@ -147,6 +148,7 @@ export interface DocumentVersion {
   author?: string;
   change_summary?: string;
   file_name?: string;
+  title?: string;
   file_size?: number;
   page_count: number;
   content?: string;
@@ -176,6 +178,7 @@ export interface DocumentItem {
   is_docx?: boolean;
   docx_data_url?: string;
   html_content?: string;
+  file_size?: number;
   version?: number;
   versions?: DocumentVersion[];
   updated_at?: string;
@@ -191,6 +194,52 @@ export interface CaseDeadlineItem {
   description: string;
   is_court_recess_adjusted: boolean;
   status: "pending" | "approaching" | "urgent" | "passed";
+  created_at: string;
+}
+
+export type TimeTaskCategory =
+  | "pleading"
+  | "discovery"
+  | "hearing"
+  | "consultation"
+  | "correspondence"
+  | "research"
+  | "other";
+
+export interface TimeEntryItem {
+  id: string;
+  case_id: string;
+  user_id: string;
+  user_name: string;
+  user_role?: string;
+  date: string;
+  duration_minutes: number;
+  hourly_rate: number;
+  task_category: TimeTaskCategory;
+  description: string;
+  is_billable: boolean;
+  status: "unbilled" | "invoiced" | "written_off";
+  created_at: string;
+}
+
+export type ExpenseType =
+  | "court_fee"
+  | "service_fee"
+  | "expert_appraisal"
+  | "travel"
+  | "other";
+
+export interface ExpenseItem {
+  id: string;
+  case_id: string;
+  expense_type: ExpenseType;
+  title: string;
+  amount: number;
+  vat_rate: number;
+  vat_amount: number;
+  incurred_date: string;
+  receipt_doc_title?: string;
+  status: "unbilled" | "invoiced";
   created_at: string;
 }
 
@@ -392,6 +441,342 @@ export const deadlinesStore: CaseDeadlineItem[] = [
     created_at: "2026-09-02T11:00:00Z",
   },
 ];
+
+export const timeEntriesStore: TimeEntryItem[] = [
+  {
+    id: "time-01",
+    case_id: "case-01",
+    user_id: "usr-lawyer-01",
+    user_name: "Guðrún Sigurðardóttir hrl.",
+    user_role: "Málflytjandi / Partner",
+    date: "2026-08-15",
+    duration_minutes: 180,
+    hourly_rate: 36000,
+    task_category: "pleading",
+    description: "Gagnaöflun, rýni verksamnings við Bryggjuhverfi og samning stefnu á hendur Verktakafélaginu Hamri ehf.",
+    is_billable: true,
+    status: "unbilled",
+    created_at: "2026-08-15T16:30:00Z",
+  },
+  {
+    id: "time-02",
+    case_id: "case-01",
+    user_id: "usr-paralegal-01",
+    user_name: "Ásta Einarsdóttir lögfræðinemi",
+    user_role: "Aðstoðarmaður / Paralegal",
+    date: "2026-08-16",
+    duration_minutes: 120,
+    hourly_rate: 22000,
+    task_category: "discovery",
+    description: "Flokkun málsskjala, undirbúningur dómaskjalaskrár og afhending stefnu til stefnuvotts.",
+    is_billable: true,
+    status: "unbilled",
+    created_at: "2026-08-16T12:00:00Z",
+  },
+  {
+    id: "time-03",
+    case_id: "case-01",
+    user_id: "usr-lawyer-01",
+    user_name: "Guðrún Sigurðardóttir hrl.",
+    user_role: "Málflytjandi / Partner",
+    date: "2026-08-25",
+    duration_minutes: 90,
+    hourly_rate: 36000,
+    task_category: "consultation",
+    description: "Fundur með stjórn Brekku ehf. farið yfir málsvarnir stefnda og undirbúin viðbótargögn.",
+    is_billable: true,
+    status: "unbilled",
+    created_at: "2026-08-25T15:00:00Z",
+  },
+  {
+    id: "time-04",
+    case_id: "case-01",
+    user_id: "usr-lawyer-01",
+    user_name: "Guðrún Sigurðardóttir hrl.",
+    user_role: "Málflytjandi / Partner",
+    date: "2026-09-02",
+    duration_minutes: 60,
+    hourly_rate: 36000,
+    task_category: "hearing",
+    description: "Mæting í þinghald fyrir Héraðsdómi Reykjavíkur. Stefna lögð fram og greinargerðarfrestur veittur.",
+    is_billable: true,
+    status: "unbilled",
+    created_at: "2026-09-02T11:30:00Z",
+  },
+  {
+    id: "time-05",
+    case_id: "case-02",
+    user_id: "usr-lawyer-01",
+    user_name: "Guðrún Sigurðardóttir hrl.",
+    user_role: "Málflytjandi / Partner",
+    date: "2026-08-21",
+    duration_minutes: 150,
+    hourly_rate: 36000,
+    task_category: "research",
+    description: "Útreikningur bótaréttar skv. lögum nr. 50/1993, rýni á læknisfræðilegu örorkumati og fordæmum Hæstaréttar.",
+    is_billable: true,
+    status: "unbilled",
+    created_at: "2026-08-21T14:00:00Z",
+  },
+  {
+    id: "time-06",
+    case_id: "case-03",
+    user_id: "usr-lawyer-01",
+    user_name: "Guðrún Sigurðardóttir hrl.",
+    user_role: "Málflytjandi / Partner",
+    date: "2026-09-03",
+    duration_minutes: 120,
+    hourly_rate: 36000,
+    task_category: "pleading",
+    description: "Samning stefnu vegna leyndra galla og myglu í fasteign að Laugavegi 45.",
+    is_billable: true,
+    status: "unbilled",
+    created_at: "2026-09-03T16:00:00Z",
+  },
+];
+
+export const expensesStore: ExpenseItem[] = [
+  {
+    id: "exp-01",
+    case_id: "case-01",
+    expense_type: "court_fee",
+    title: "Dómgjald vegna útgáfu og þingfestingar stefnu (l. nr. 88/1991)",
+    amount: 26000,
+    vat_rate: 0,
+    vat_amount: 0,
+    incurred_date: "2026-08-16",
+    receipt_doc_title: "Kvittun Héraðsdóms Reykjavíkur - Dómgjald.pdf",
+    status: "unbilled",
+    created_at: "2026-08-16T11:30:00Z",
+  },
+  {
+    id: "exp-02",
+    case_id: "case-01",
+    expense_type: "service_fee",
+    title: "Þóknun stefnuvotts fyrir löglega birtingu stefnu á Hamri ehf.",
+    amount: 14500,
+    vat_rate: 0.24,
+    vat_amount: 3480,
+    incurred_date: "2026-08-16",
+    receipt_doc_title: "Reikningur Stefnuvotta Reykjavíkur ehf.pdf",
+    status: "unbilled",
+    created_at: "2026-08-16T15:00:00Z",
+  },
+  {
+    id: "exp-03",
+    case_id: "case-01",
+    expense_type: "expert_appraisal",
+    title: "Frumálit dómkvadds matsanns á byggingatæknilegum göllum",
+    amount: 185000,
+    vat_rate: 0.24,
+    vat_amount: 44400,
+    incurred_date: "2026-08-28",
+    receipt_doc_title: "Reikningur Verkfræðistofu Reykjavíkur.pdf",
+    status: "unbilled",
+    created_at: "2026-08-28T16:00:00Z",
+  },
+  {
+    id: "exp-04",
+    case_id: "case-03",
+    expense_type: "court_fee",
+    title: "Dómgjald vegna stefnu að Laugavegi 45",
+    amount: 26000,
+    vat_rate: 0,
+    vat_amount: 0,
+    incurred_date: "2026-09-02",
+    status: "unbilled",
+    created_at: "2026-09-02T10:00:00Z",
+  },
+];
+
+export const TASK_CATEGORY_LABELS: Record<TimeTaskCategory, string> = {
+  pleading: "Stefnu- og greinargerðarsmíð",
+  discovery: "Gagnaöflun og skjalaskoðun",
+  hearing: "Dómþing, fyrirtökur og málflutningur",
+  consultation: "Viðtöl við umbjóðanda og vitni",
+  correspondence: "Samskipti við dóm og gagnaðila",
+  research: "Lagarannsóknir og fordæmaleit",
+  other: "Önnur lögfræðistörf",
+};
+
+export const EXPENSE_TYPE_LABELS: Record<ExpenseType, string> = {
+  court_fee: "Dómgjöld (l. nr. 88/1991)",
+  service_fee: "Stefnubirtingarkostnaður",
+  expert_appraisal: "Matsgerðir og sérfræðiálit",
+  travel: "Ferðakostnaður",
+  other: "Ýmis útlagður kostnaður",
+};
+
+export type PaymentMethod = "bank_transfer" | "credit_card" | "cash" | "other";
+
+export interface InvoiceLineItem {
+  id: string;
+  type: "time" | "expense" | "custom";
+  ref_id?: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  vat_rate: number;
+  amount_ex_vat: number;
+  vat_amount: number;
+  total_inc_vat: number;
+}
+
+export interface InvoiceItem {
+  id: string;
+  invoice_number: string;
+  case_id: string;
+  case_number: string;
+  case_title: string;
+  client_name: string;
+  client_kennitala?: string;
+  client_address?: string;
+  attorney_name: string;
+  law_firm_name: string;
+  law_firm_kennitala: string;
+  law_firm_vat_no: string;
+  law_firm_bank: string;
+  issue_date: string;
+  due_date: string;
+  penalty_date: string;
+  status: "draft" | "issued" | "paid" | "cancelled";
+  line_items: InvoiceLineItem[];
+  subtotal_ex_vat: number;
+  total_vat: number;
+  total_inc_vat: number;
+  retainer_deducted: number;
+  final_amount_due: number;
+  notes?: string;
+  payment_date?: string;
+  payment_reference?: string;
+  created_at: string;
+}
+
+export interface RetainerTransactionItem {
+  id: string;
+  case_id: string;
+  type: "deposit" | "deduction" | "refund";
+  amount: number;
+  date: string;
+  payment_method: PaymentMethod;
+  reference: string;
+  invoice_id?: string;
+  invoice_number?: string;
+  notes?: string;
+  created_at: string;
+}
+
+export const retainersStore: RetainerTransactionItem[] = [
+  {
+    id: "ret-01",
+    case_id: "case-01",
+    type: "deposit",
+    amount: 500000,
+    date: "2026-08-15",
+    payment_method: "bank_transfer",
+    reference: "Innborgun á vörslureikning - Mál E-1024/2026",
+    notes: "Upphaflegt tryggingafé vegna rekstrar máls gegn Hamri ehf.",
+    created_at: "2026-08-15T11:00:00Z",
+  },
+  {
+    id: "ret-02",
+    case_id: "case-02",
+    type: "deposit",
+    amount: 250000,
+    date: "2026-08-20",
+    payment_method: "bank_transfer",
+    reference: "Innborgun á vörslureikning - Mál E-1089/2026",
+    notes: "Tryggingafé vegna líkamstjónamáls",
+    created_at: "2026-08-20T10:00:00Z",
+  },
+];
+
+export const invoicesStore: InvoiceItem[] = [
+  {
+    id: "inv-demo-01",
+    invoice_number: "REIK-2026-0001",
+    case_id: "case-01",
+    case_number: "E-1024/2026",
+    case_title: "Eignarhaldsfélagið Brekka ehf. gegn Verktakafélaginu Hamri ehf.",
+    client_name: "Eignarhaldsfélagið Brekka ehf.",
+    client_kennitala: "520412-0890",
+    client_address: "Skútuvogi 12, 104 Reykjavík",
+    attorney_name: "Guðrún Sigurðardóttir hrl.",
+    law_firm_name: "Lögmenn Lækjargötu slf.",
+    law_firm_kennitala: "540209-1120",
+    law_firm_vat_no: "102345",
+    law_firm_bank: "0101-26-045678",
+    issue_date: "2026-08-31",
+    due_date: "2026-09-14",
+    penalty_date: "2026-09-30",
+    status: "issued",
+    line_items: [
+      {
+        id: "li-demo-01",
+        type: "time",
+        ref_id: "time-01",
+        description: "Gagnaöflun, rýni verksamnings við Bryggjuhverfi og samning stefnu (3.0 klst. á kr. 36.000)",
+        quantity: 3,
+        unit_price: 36000,
+        vat_rate: 0.24,
+        amount_ex_vat: 108000,
+        vat_amount: 25920,
+        total_inc_vat: 133920,
+      },
+      {
+        id: "li-demo-02",
+        type: "expense",
+        ref_id: "exp-01",
+        description: "Dómgjald vegna útgáfu og þingfestingar stefnu (l. nr. 88/1991)",
+        quantity: 1,
+        unit_price: 26000,
+        vat_rate: 0,
+        amount_ex_vat: 26000,
+        vat_amount: 0,
+        total_inc_vat: 26000,
+      },
+    ],
+    subtotal_ex_vat: 134000,
+    total_vat: 25920,
+    total_inc_vat: 159920,
+    retainer_deducted: 0,
+    final_amount_due: 159920,
+    notes: "Fyrsti reikningur vegna stefnugerðar og þingfestingar.",
+    created_at: "2026-08-31T15:00:00Z",
+  },
+];
+
+export function calculateRetainerBalance(
+  caseId: string,
+  retainers: RetainerTransactionItem[] = retainersStore
+) {
+  const caseTx = retainers.filter((t) => t.case_id === caseId);
+  let totalDeposited = 0;
+  let totalDeducted = 0;
+  let totalRefunded = 0;
+
+  caseTx.forEach((tx) => {
+    if (tx.type === "deposit") {
+      totalDeposited += tx.amount;
+    } else if (tx.type === "deduction") {
+      totalDeducted += tx.amount;
+    } else if (tx.type === "refund") {
+      totalRefunded += tx.amount;
+    }
+  });
+
+  const currentBalance = Math.max(0, totalDeposited - totalDeducted - totalRefunded);
+
+  return {
+    totalDeposited,
+    totalDeducted,
+    totalRefunded,
+    currentBalance,
+    transactions: caseTx,
+  };
+}
+
+
 EOF
 fi
 
@@ -522,6 +907,7 @@ class OllamaClient {
 }
 
 export const ollama = new OllamaClient();
+
 EOF
 fi
 
@@ -657,6 +1043,7 @@ export const PRE_SEEDED_PRECEDENTS: LegalPrecedent[] = [
     statutory_basis: ["ÍST 30:2012", "Samningalög nr. 7/1936"],
   },
 ];
+
 EOF
 fi
 
@@ -853,6 +1240,7 @@ export function calculateCivilSummonsDeadlines(input: SummonsCalculationInput): 
     deadlines,
   };
 }
+
 EOF
 fi
 
@@ -992,6 +1380,7 @@ ${line}
 
   return `${header}\n${rows}\n${footer}`;
 }
+
 EOF
 fi
 
@@ -1126,6 +1515,935 @@ export async function extractTextFromDocx(
     wordCount,
   };
 }
+
+EOF
+fi
+
+if [ ! -f "src/lib/pdfExtractor.ts" ]; then
+    echo "Restoring src/lib/pdfExtractor.ts..."
+    cat <<'EOF' > src/lib/pdfExtractor.ts
+import { extractText } from "unpdf";
+
+export interface PdfExtractionResult {
+  text: string;
+  pageCount: number;
+  info?: any;
+}
+
+export async function extractTextFromPdf(
+  input: Buffer | Uint8Array | string
+): Promise<PdfExtractionResult> {
+  let uint8Array: Uint8Array;
+
+  if (typeof input === "string") {
+    if (input.startsWith("data:")) {
+      const base64Part = input.split(",")[1] || "";
+      uint8Array = new Uint8Array(Buffer.from(base64Part, "base64"));
+    } else {
+      uint8Array = new Uint8Array(Buffer.from(input, "binary"));
+    }
+  } else if (Buffer.isBuffer(input)) {
+    uint8Array = new Uint8Array(input);
+  } else {
+    uint8Array = input;
+  }
+
+  try {
+    const res = await extractText(uint8Array, { mergePages: true });
+    const text = Array.isArray(res.text) ? res.text.join("\n\n") : (res.text || "");
+    const pageCount = res.totalPages || Math.max(1, Math.ceil(text.length / 1500));
+    return {
+      text: text.trim(),
+      pageCount,
+      info: (res as any)?.info,
+    };
+  } catch (err) {
+    console.warn("unpdf extraction failed, falling back to stream parsing:", err);
+    // Simple fallback scanner for PDF text streams
+    try {
+      const latin1 = Buffer.from(uint8Array).toString("latin1");
+      const btMatches = latin1.match(/BT[\s\S]*?ET/g);
+      let fallbackText = "";
+      if (btMatches) {
+        for (const block of btMatches) {
+          const tjMatches = block.match(/\((.*?)\)\s*Tj/g) || block.match(/\[(.*?)\]\s*TJ/g);
+          if (tjMatches) {
+            fallbackText += tjMatches.map(m => m.replace(/[\(\)\[\]]|Tj|TJ/g, "").trim()).join(" ") + "\n";
+          }
+        }
+      }
+      const pageCountMatch = latin1.match(/\/Count\s+(\d+)/);
+      const pageCount = pageCountMatch ? parseInt(pageCountMatch[1], 10) : 1;
+      return {
+        text: fallbackText.trim() || "[PDF skjal móttekið]",
+        pageCount: Math.max(1, pageCount),
+      };
+    } catch {
+      return {
+        text: "[PDF skjal móttekið]",
+        pageCount: 1,
+      };
+    }
+  }
+}
+
+EOF
+fi
+
+if [ ! -f "src/lib/invoiceUtils.ts" ]; then
+    echo "Restoring src/lib/invoiceUtils.ts..."
+    cat <<'EOF' > src/lib/invoiceUtils.ts
+import { InvoiceItem } from "./store";
+
+/**
+ * Formats an invoice according to Icelandic standards (lög nr. 50/1988 um virðisaukaskatt og reglugerð nr. 50/1993 um bókhald)
+ */
+export function formatIcelandicInvoiceText(invoice: InvoiceItem): string {
+  const line = "=".repeat(78);
+  const thinLine = "-".repeat(78);
+
+  const statusMap: Record<string, string> = {
+    draft: "DRÖG",
+    issued: "ÚTGEFIÐ",
+    paid: "GREITT",
+    cancelled: "ÓGILT / FELLT NIÐUR",
+  };
+
+  const statusLabel = statusMap[invoice.status] || invoice.status.toUpperCase();
+
+  let out = "";
+  out += `${line}\n`;
+  out += `                          REIKNINGUR / INVOICE\n`;
+  out += `                           [ ${statusLabel} ]\n`;
+  out += `${line}\n\n`;
+
+  out += `ÚTGEFANDI (LÖGMANNSSTOFA):\n`;
+  out += `Nafn:          ${invoice.law_firm_name || "Lögmenn Lækjargötu slf."}\n`;
+  out += `Kennitala:     ${invoice.law_firm_kennitala || "540209-1120"}\n`;
+  out += `VSK-númer:     ${invoice.law_firm_vat_no || "102345"}\n`;
+  out += `Málflytjandi:  ${invoice.attorney_name || "Guðrún Sigurðardóttir hrl."}\n`;
+  out += `Bankareikn.:   ${invoice.law_firm_bank || "0101-26-045678"}\n\n`;
+
+  out += `GREIÐANDI (UMBJÓÐANDI):\n`;
+  out += `Nafn:          ${invoice.client_name}\n`;
+  if (invoice.client_kennitala) {
+    out += `Kennitala:     ${invoice.client_kennitala}\n`;
+  }
+  if (invoice.client_address) {
+    out += `Heimilisfang:  ${invoice.client_address}\n`;
+  }
+  out += `Málsnúmer:     ${invoice.case_number} - ${invoice.case_title}\n\n`;
+
+  out += `REIKNINGSUPPLÝSINGAR:\n`;
+  out += `Reikningsnr.:  ${invoice.invoice_number}\n`;
+  out += `Útgáfudagur:   ${invoice.issue_date}\n`;
+  out += `Gjalddagi:     ${invoice.due_date}\n`;
+  out += `Eindagi:       ${invoice.penalty_date}\n`;
+  if (invoice.payment_date) {
+    out += `Greiðsludagur: ${invoice.payment_date} (${invoice.payment_reference || "Greiðsla móttekin"})\n`;
+  }
+
+  out += `\n${thinLine}\n`;
+  out += `SUNDURLIÐUN REIKNINGS\n`;
+  out += `${thinLine}\n`;
+  out += `LÝSING / VERKÞÁTTUR                  MAGN     EIN.VERÐ     VSK%    SAMTALS M. VSK\n`;
+  out += `${thinLine}\n`;
+
+  if (!invoice.line_items || invoice.line_items.length === 0) {
+    out += `Engir liðir á reikningi.\n`;
+  } else {
+    invoice.line_items.forEach((item, index) => {
+      const num = String(index + 1).padStart(2, " ");
+      const desc = item.description.length > 34 ? item.description.slice(0, 31) + "..." : item.description.padEnd(34, " ");
+      const qty = item.quantity.toFixed(1).padStart(5, " ");
+      const price = `${item.unit_price.toLocaleString("is-IS")} kr.`.padStart(11, " ");
+      const vatPct = `${Math.round(item.vat_rate * 100)}%`.padStart(5, " ");
+      const tot = `${item.total_inc_vat.toLocaleString("is-IS")} kr.`.padStart(14, " ");
+      out += `${num}. ${desc} ${qty} ${price} ${vatPct} ${tot}\n`;
+    });
+  }
+
+  out += `${thinLine}\n`;
+  out += `Samtals án virðisaukaskatts:                              kr. ${invoice.subtotal_ex_vat.toLocaleString("is-IS")}\n`;
+  out += `Virðisaukaskattur samtals (24% / 0% VSK):                 kr. ${invoice.total_vat.toLocaleString("is-IS")}\n`;
+  out += `------------------------------------------------------------------------------\n`;
+  out += `HEILDARFJÁRHÆÐ M. VSK:                                    kr. ${invoice.total_inc_vat.toLocaleString("is-IS")}\n`;
+
+  if (invoice.retainer_deducted > 0) {
+    out += `Frádráttur af tryggingafé (vörslureikningi):            - kr. ${invoice.retainer_deducted.toLocaleString("is-IS")}\n`;
+    out += `------------------------------------------------------------------------------\n`;
+    out += `EFTIRSTÖÐVAR TIL GREIÐSLU:                                kr. ${invoice.final_amount_due.toLocaleString("is-IS")}\n`;
+  }
+
+  if (invoice.notes) {
+    out += `\nAthugasemdir:\n${invoice.notes}\n`;
+  }
+
+  out += `\n${line}\n`;
+  out += `GREIÐSLUSKILMÁLAR:\n`;
+  out += `Vinsamlegast leggið inn á ofangreindan reikning og tilgreinið reikningsnúmer sem tilvísun.\n`;
+  out += `Sé reikningur ekki greiddur á eindaga reiknast hæstu lögleyfðu dráttarvextir\n`;
+  out += `samkvæmt 1. mgr. 6. gr. laga nr. 38/2001 um vexti og verðtryggingu frá gjalddaga.\n`;
+  out += `${line}\n`;
+
+  return out;
+}
+
+EOF
+fi
+
+if [ ! -f "src/lib/costStatement.ts" ]; then
+    echo "Restoring src/lib/costStatement.ts..."
+    cat <<'EOF' > src/lib/costStatement.ts
+import {
+  CaseItem,
+  TimeEntryItem,
+  ExpenseItem,
+  TASK_CATEGORY_LABELS,
+  EXPENSE_TYPE_LABELS,
+} from "./store";
+
+export interface CostStatementSummary {
+  totalMinutes: number;
+  totalHours: number;
+  billableMinutes: number;
+  billableHours: number;
+  legalFeeExVat: number;
+  legalFeeVat: number;
+  legalFeeIncVat: number;
+  courtFees: number;
+  otherExpensesExVat: number;
+  otherExpensesVat: number;
+  totalExpensesIncVat: number;
+  grandTotalClaim: number;
+  vatRate: number;
+}
+
+export function calculateCostSummary(
+  timeEntries: TimeEntryItem[],
+  expenses: ExpenseItem[]
+): CostStatementSummary {
+  const vatRate = 0.24;
+
+  let totalMinutes = 0;
+  let billableMinutes = 0;
+  let legalFeeExVat = 0;
+
+  timeEntries.forEach((entry) => {
+    totalMinutes += entry.duration_minutes;
+    if (entry.is_billable) {
+      billableMinutes += entry.duration_minutes;
+      const hours = entry.duration_minutes / 60;
+      legalFeeExVat += Math.round(hours * entry.hourly_rate);
+    }
+  });
+
+  const legalFeeVat = Math.round(legalFeeExVat * vatRate);
+  const legalFeeIncVat = legalFeeExVat + legalFeeVat;
+
+  let courtFees = 0;
+  let otherExpensesExVat = 0;
+  let otherExpensesVat = 0;
+
+  expenses.forEach((exp) => {
+    if (exp.expense_type === "court_fee") {
+      courtFees += exp.amount;
+    } else {
+      otherExpensesExVat += exp.amount;
+      otherExpensesVat += exp.vat_amount || (exp.vat_rate ? Math.round(exp.amount * exp.vat_rate) : 0);
+    }
+  });
+
+  const totalExpensesIncVat = courtFees + otherExpensesExVat + otherExpensesVat;
+  const grandTotalClaim = legalFeeIncVat + totalExpensesIncVat;
+
+  return {
+    totalMinutes,
+    totalHours: Number((totalMinutes / 60).toFixed(2)),
+    billableMinutes,
+    billableHours: Number((billableMinutes / 60).toFixed(2)),
+    legalFeeExVat,
+    legalFeeVat,
+    legalFeeIncVat,
+    courtFees,
+    otherExpensesExVat,
+    otherExpensesVat,
+    totalExpensesIncVat,
+    grandTotalClaim,
+    vatRate,
+  };
+}
+
+export interface CostStatementFormatOptions {
+  courtName?: string;
+  judgeName?: string;
+  partyName?: string;
+  partyRole?: string;
+  attorneyName?: string;
+  attorneyTitle?: string;
+  clientVatDeductible?: boolean;
+  includeInterestClaim?: boolean;
+  interestText?: string;
+  additionalRemarks?: string;
+}
+
+export function formatCourtCostStatementText(
+  caseItem: CaseItem,
+  timeEntries: TimeEntryItem[],
+  expenses: ExpenseItem[],
+  optionsOrAttorney: string | CostStatementFormatOptions = "Guðrún Sigurðardóttir hrl.",
+  partyNameArg?: string
+): string {
+  const summary = calculateCostSummary(timeEntries, expenses);
+  const dateStr = new Date().toLocaleDateString("is-IS", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const line = "=".repeat(78);
+  const thinLine = "-".repeat(78);
+
+  let attorneyName = "Guðrún Sigurðardóttir hrl.";
+  let courtName = "Héraðsdómur Reykjavíkur";
+  let judgeName: string | undefined = undefined;
+  let partyName: string | undefined = partyNameArg;
+  let partyRole = "Stefnandi";
+  let clientVatDeductible = false;
+  let includeInterestClaim = true;
+  let interestText: string | undefined = undefined;
+  let additionalRemarks: string | undefined = undefined;
+
+  if (typeof optionsOrAttorney === "object" && optionsOrAttorney !== null) {
+    if (optionsOrAttorney.attorneyName) {
+      attorneyName = `${optionsOrAttorney.attorneyName}${
+        optionsOrAttorney.attorneyTitle ? ` ${optionsOrAttorney.attorneyTitle}` : ""
+      }`;
+    }
+    if (optionsOrAttorney.courtName) courtName = optionsOrAttorney.courtName;
+    if (optionsOrAttorney.judgeName) judgeName = optionsOrAttorney.judgeName;
+    if (optionsOrAttorney.partyName) partyName = optionsOrAttorney.partyName;
+    if (optionsOrAttorney.partyRole) partyRole = optionsOrAttorney.partyRole;
+    if (optionsOrAttorney.clientVatDeductible !== undefined) clientVatDeductible = optionsOrAttorney.clientVatDeductible;
+    if (optionsOrAttorney.includeInterestClaim !== undefined) includeInterestClaim = optionsOrAttorney.includeInterestClaim;
+    if (optionsOrAttorney.interestText) interestText = optionsOrAttorney.interestText;
+    if (optionsOrAttorney.additionalRemarks) additionalRemarks = optionsOrAttorney.additionalRemarks;
+  } else if (typeof optionsOrAttorney === "string") {
+    attorneyName = optionsOrAttorney;
+  }
+
+  const partyDisplay = partyName || (caseItem.title.includes(" gegn ") ? caseItem.title.split(" gegn ")[0] : "Stefnandi");
+
+  const finalLegalFee = clientVatDeductible ? summary.legalFeeExVat : summary.legalFeeIncVat;
+  const finalExpenses = clientVatDeductible
+    ? summary.courtFees + summary.otherExpensesExVat
+    : summary.totalExpensesIncVat;
+  const grandTotal = finalLegalFee + finalExpenses;
+
+  let out = "";
+  out += `${line}\n`;
+  out += `                MÁLSKOSTNAÐARYFIRLIT FYRIR HÉRAÐSDÓMI\n`;
+  out += `               (skv. 130. gr. laga nr. 91/1991 um meðferð einkamála)\n`;
+  out += `${line}\n\n`;
+
+  out += `Dómstóll:      ${courtName}${judgeName ? ` (Dómari: ${judgeName})` : ""}\n`;
+  out += `Málsnúmer:     ${caseItem.case_number}\n`;
+  out += `Málsaðilar:    ${caseItem.title}\n`;
+  out += `Aðili:         ${partyDisplay} (${partyRole})\n`;
+  out += `Málflytjandi:  ${attorneyName}\n`;
+  out += `Dagsetning:    ${dateStr}\n`;
+  out += `\n${thinLine}\n`;
+  out += `I. SUNDURLIÐUN Á LÖGMANNSÞÓKNUN (VINNUSTUNDIR)\n`;
+  out += `${thinLine}\n`;
+  out += `DAGS.        KLST.  TÍMAGJALD    VERKÞÁTTUR OG LÝSING Á LÖGFRÆÐISTÖRFUM\n`;
+  out += `${thinLine}\n`;
+
+  const billableEntries = timeEntries.filter((e) => e.is_billable);
+  if (billableEntries.length === 0) {
+    out += `Engir tímaliðir skráðir.\n`;
+  } else {
+    billableEntries.forEach((e) => {
+      const hrs = (e.duration_minutes / 60).toFixed(1).padStart(4, " ");
+      const rate = `${e.hourly_rate.toLocaleString("is-IS")} kr.`.padStart(11, " ");
+      const cat = TASK_CATEGORY_LABELS[e.task_category] || e.task_category;
+      out += `${e.date}  ${hrs}  ${rate}  [${cat}]\n`;
+      out += `                          ${e.description} (${e.user_name})\n`;
+    });
+  }
+
+  out += `\n${thinLine}\n`;
+  out += `Samtals unnar stundir málflytjanda:       ${summary.billableHours.toLocaleString("is-IS")} klst.\n`;
+  out += `Lögmannsþóknun alls án VSK:               kr. ${summary.legalFeeExVat.toLocaleString("is-IS")}\n`;
+  out += `Virðisaukaskattur (24% VSK):              kr. ${summary.legalFeeVat.toLocaleString("is-IS")}\n`;
+  out += `LÖGMANNSÞÓKNUN SAMTALS M. VSK:            kr. ${summary.legalFeeIncVat.toLocaleString("is-IS")}\n`;
+
+  out += `\n${thinLine}\n`;
+  out += `II. ÚTLAGÐUR KOSTNAÐUR OG DÓMGJÖLD\n`;
+  out += `${thinLine}\n`;
+  out += `DAGS.        UPPHÆÐ         LIÐUR / TEGUND\n`;
+  out += `${thinLine}\n`;
+
+  if (expenses.length === 0) {
+    out += `Enginn útlagður kostnaður skráður.\n`;
+  } else {
+    expenses.forEach((exp) => {
+      const expType = EXPENSE_TYPE_LABELS[exp.expense_type] || exp.expense_type;
+      const totalAmount = exp.amount + (exp.vat_amount || 0);
+      const amtStr = `${totalAmount.toLocaleString("is-IS")} kr.`.padStart(12, " ");
+      out += `${exp.incurred_date}  ${amtStr}  ${exp.title} (${expType})\n`;
+    });
+  }
+
+  out += `\n${thinLine}\n`;
+  out += `Dómgjöld skv. lögum nr. 88/1991 (0% VSK):  kr. ${summary.courtFees.toLocaleString("is-IS")}\n`;
+  out += `Annar útlagður kostnaður án VSK:          kr. ${summary.otherExpensesExVat.toLocaleString("is-IS")}\n`;
+  out += `Virðisaukaskattur af útlögðum kostnaði:   kr. ${summary.otherExpensesVat.toLocaleString("is-IS")}\n`;
+  out += `ÚTLAGÐUR KOSTNAÐUR SAMTALS:               kr. ${summary.totalExpensesIncVat.toLocaleString("is-IS")}\n`;
+
+  out += `\n${line}\n`;
+  out += `III. HEILDARKRAFA UM MÁLSKOSTNAÐ\n`;
+  out += `${line}\n`;
+  if (clientVatDeductible) {
+    out += `1. Lögmannsþóknun án VSK (VSK-skyldur umbj.): kr. ${finalLegalFee.toLocaleString("is-IS")}\n`;
+    out += `2. Útlagður kostnaður og dómgjöld án VSK:     kr. ${finalExpenses.toLocaleString("is-IS")}\n`;
+    out += `------------------------------------------------------------------------------\n`;
+    out += `HEILDARKRAFA UM MÁLSKOSTNAÐ (ÁN VSK):         kr. ${grandTotal.toLocaleString("is-IS")}\n`;
+    out += `  (Umbjóðandi nýtir innskatt skv. 130. gr. laga nr. 91/1991 og laga nr. 50/1988)\n\n`;
+  } else {
+    out += `1. Lögmannsþóknun málflytjanda m. VSK:        kr. ${summary.legalFeeIncVat.toLocaleString("is-IS")}\n`;
+    out += `2. Útlagður kostnaður og dómgjöld:            kr. ${summary.totalExpensesIncVat.toLocaleString("is-IS")}\n`;
+    out += `------------------------------------------------------------------------------\n`;
+    out += `HEILDARKRAFA UM MÁLSKOSTNAÐ:                  kr. ${grandTotal.toLocaleString("is-IS")} m. VSK\n\n`;
+  }
+
+  if (includeInterestClaim) {
+    out += `${interestText || "Þess er krafist að gagnaðili verði dæmdur til að greiða málskostnað þennan\nmeð dráttarvöxtum samkvæmt 1. mgr. 6. gr. laga nr. 38/2001 um vexti og\nverðtryggingu frá þeim degi sem liðinn er mánuður frá uppkvaðningu dóms\ntil greiðsludags."}\n\n`;
+  }
+
+  if (additionalRemarks) {
+    out += `IV. ATHUGASEMDIR:\n${additionalRemarks}\n\n`;
+  }
+
+  out += `Virðingarfyllst,\n`;
+  out += `${attorneyName}\n`;
+  out += `f.h. ${partyDisplay} (${partyRole})\n`;
+  out += `${line}\n`;
+
+  return out;
+}
+
+EOF
+fi
+
+if [ ! -f "src/lib/courtCostDocxGenerator.ts" ]; then
+    echo "Restoring src/lib/courtCostDocxGenerator.ts..."
+    cat <<'EOF' > src/lib/courtCostDocxGenerator.ts
+import {
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+  BorderStyle,
+  HeadingLevel,
+  AlignmentType,
+} from "docx";
+import {
+  CaseItem,
+  TimeEntryItem,
+  ExpenseItem,
+  TASK_CATEGORY_LABELS,
+  EXPENSE_TYPE_LABELS,
+} from "./store";
+import { calculateCostSummary } from "./costStatement";
+
+export interface CourtCostStatementOptions {
+  courtName?: string;
+  judgeName?: string;
+  attorneyName?: string;
+  attorneyTitle?: string;
+  lawFirm?: string;
+  partyName?: string;
+  partyRole?: string;
+  opposingPartyName?: string;
+  clientVatDeductible?: boolean;
+  includeInterestClaim?: boolean;
+  interestText?: string;
+  additionalRemarks?: string;
+  selectedTimeEntryIds?: string[];
+  selectedExpenseIds?: string[];
+}
+
+export async function generateCourtCostDocxBlob(
+  caseItem: CaseItem,
+  timeEntries: TimeEntryItem[],
+  expenses: ExpenseItem[],
+  options: CourtCostStatementOptions = {}
+): Promise<Blob> {
+  // Filter by selected IDs if provided
+  let filteredTime = timeEntries;
+  if (options.selectedTimeEntryIds && options.selectedTimeEntryIds.length > 0) {
+    filteredTime = timeEntries.filter((t) => options.selectedTimeEntryIds!.includes(t.id));
+  } else {
+    filteredTime = timeEntries.filter((t) => t.is_billable);
+  }
+
+  let filteredExpenses = expenses;
+  if (options.selectedExpenseIds && options.selectedExpenseIds.length > 0) {
+    filteredExpenses = expenses.filter((e) => options.selectedExpenseIds!.includes(e.id));
+  }
+
+  const summary = calculateCostSummary(filteredTime, filteredExpenses);
+
+  const courtName = options.courtName || "Héraðsdómur Reykjavíkur";
+  const judgeName = options.judgeName;
+  const attorneyFullName = `${options.attorneyName || "Guðrún Sigurðardóttir"}${
+    options.attorneyTitle ? ` ${options.attorneyTitle}` : ""
+  }`;
+  const lawFirm = options.lawFirm || "Lögmenn Lækjargötu slf.";
+  const partyName = options.partyName || (caseItem.title.includes(" gegn ") ? caseItem.title.split(" gegn ")[0] : "Stefnandi");
+  const partyRole = options.partyRole || "Stefnandi";
+  const opposingParty = options.opposingPartyName || (caseItem.title.includes(" gegn ") ? caseItem.title.split(" gegn ")[1] : "Stefndi");
+  const clientVatDeductible = Boolean(options.clientVatDeductible);
+
+  const finalLegalFee = clientVatDeductible ? summary.legalFeeExVat : summary.legalFeeIncVat;
+  const finalExpenses = clientVatDeductible
+    ? summary.courtFees + summary.otherExpensesExVat
+    : summary.totalExpensesIncVat;
+  const grandTotal = finalLegalFee + finalExpenses;
+
+  const dateStr = new Date().toLocaleDateString("is-IS", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const tableBorderNone = {
+    top: { style: BorderStyle.NONE, size: 0, color: "auto" },
+    bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
+    left: { style: BorderStyle.NONE, size: 0, color: "auto" },
+    right: { style: BorderStyle.NONE, size: 0, color: "auto" },
+  };
+
+  const tableBorderBottomThin = {
+    top: { style: BorderStyle.NONE, size: 0, color: "auto" },
+    bottom: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+    left: { style: BorderStyle.NONE, size: 0, color: "auto" },
+    right: { style: BorderStyle.NONE, size: 0, color: "auto" },
+  };
+
+  // Time entries rows
+  const timeRows: TableRow[] = [
+    new TableRow({
+      tableHeader: true,
+      children: [
+        new TableCell({
+          width: { size: 15, type: WidthType.PERCENTAGE },
+          borders: tableBorderBottomThin,
+          children: [new Paragraph({ children: [new TextRun({ text: "Dags.", bold: true, size: 20 })] })],
+        }),
+        new TableCell({
+          width: { size: 12, type: WidthType.PERCENTAGE },
+          borders: tableBorderBottomThin,
+          children: [new Paragraph({ children: [new TextRun({ text: "Klst.", bold: true, size: 20 })] })],
+        }),
+        new TableCell({
+          width: { size: 18, type: WidthType.PERCENTAGE },
+          borders: tableBorderBottomThin,
+          children: [new Paragraph({ children: [new TextRun({ text: "Tímagjald", bold: true, size: 20 })] })],
+        }),
+        new TableCell({
+          width: { size: 55, type: WidthType.PERCENTAGE },
+          borders: tableBorderBottomThin,
+          children: [new Paragraph({ children: [new TextRun({ text: "Verkþáttur og starfslýsing", bold: true, size: 20 })] })],
+        }),
+      ],
+    }),
+  ];
+
+  if (filteredTime.length === 0) {
+    timeRows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 4,
+            borders: tableBorderNone,
+            children: [new Paragraph({ children: [new TextRun({ text: "Engir tímaliðir tilgreindir.", italics: true, size: 20 })] })],
+          }),
+        ],
+      })
+    );
+  } else {
+    filteredTime.forEach((t) => {
+      const hours = (t.duration_minutes / 60).toFixed(1);
+      const cat = TASK_CATEGORY_LABELS[t.task_category] || t.task_category;
+      timeRows.push(
+        new TableRow({
+          children: [
+            new TableCell({
+              borders: tableBorderBottomThin,
+              children: [new Paragraph({ children: [new TextRun({ text: t.date, size: 19 })] })],
+            }),
+            new TableCell({
+              borders: tableBorderBottomThin,
+              children: [new Paragraph({ children: [new TextRun({ text: `${hours} klst.`, size: 19 })] })],
+            }),
+            new TableCell({
+              borders: tableBorderBottomThin,
+              children: [new Paragraph({ children: [new TextRun({ text: `${t.hourly_rate.toLocaleString("is-IS")} kr.`, size: 19 })] })],
+            }),
+            new TableCell({
+              borders: tableBorderBottomThin,
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: `[${cat}] `, bold: true, size: 19 }),
+                    new TextRun({ text: t.description, size: 19 }),
+                    new TextRun({ text: ` (${t.user_name})`, italics: true, size: 18, color: "555555" }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        })
+      );
+    });
+  }
+
+  // Expense rows
+  const expenseRows: TableRow[] = [
+    new TableRow({
+      tableHeader: true,
+      children: [
+        new TableCell({
+          width: { size: 15, type: WidthType.PERCENTAGE },
+          borders: tableBorderBottomThin,
+          children: [new Paragraph({ children: [new TextRun({ text: "Dags.", bold: true, size: 20 })] })],
+        }),
+        new TableCell({
+          width: { size: 22, type: WidthType.PERCENTAGE },
+          borders: tableBorderBottomThin,
+          children: [new Paragraph({ children: [new TextRun({ text: "Upphæð", bold: true, size: 20 })] })],
+        }),
+        new TableCell({
+          width: { size: 63, type: WidthType.PERCENTAGE },
+          borders: tableBorderBottomThin,
+          children: [new Paragraph({ children: [new TextRun({ text: "Liður / Fylgiskjal", bold: true, size: 20 })] })],
+        }),
+      ],
+    }),
+  ];
+
+  if (filteredExpenses.length === 0) {
+    expenseRows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 3,
+            borders: tableBorderNone,
+            children: [new Paragraph({ children: [new TextRun({ text: "Enginn útlagður kostnaður tilgreindur.", italics: true, size: 20 })] })],
+          }),
+        ],
+      })
+    );
+  } else {
+    filteredExpenses.forEach((exp) => {
+      const expType = EXPENSE_TYPE_LABELS[exp.expense_type] || exp.expense_type;
+      const totalAmount = exp.amount + (exp.vat_amount || 0);
+      expenseRows.push(
+        new TableRow({
+          children: [
+            new TableCell({
+              borders: tableBorderBottomThin,
+              children: [new Paragraph({ children: [new TextRun({ text: exp.incurred_date, size: 19 })] })],
+            }),
+            new TableCell({
+              borders: tableBorderBottomThin,
+              children: [new Paragraph({ children: [new TextRun({ text: `${totalAmount.toLocaleString("is-IS")} kr.`, size: 19 })] })],
+            }),
+            new TableCell({
+              borders: tableBorderBottomThin,
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: exp.title, bold: true, size: 19 }),
+                    new TextRun({ text: ` (${expType})`, size: 18, color: "555555" }),
+                    exp.receipt_doc_title
+                      ? new TextRun({ text: ` [Fylgiskjal: ${exp.receipt_doc_title}]`, italics: true, size: 18, color: "004488" })
+                      : new TextRun({ text: "" }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        })
+      );
+    });
+  }
+
+  const doc = new Document({
+    sections: [
+      {
+        properties: {},
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: "MÁLSKOSTNAÐARYFIRLIT FYRIR HÉRAÐSDÓMI",
+                bold: true,
+                size: 28,
+              }),
+            ],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 300 },
+            children: [
+              new TextRun({
+                text: "(skv. 130. gr. laga nr. 91/1991 um meðferð einkamála)",
+                italics: true,
+                size: 20,
+              }),
+            ],
+          }),
+
+          // Court & Case Details
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Dómstóll:     ", bold: true, size: 21 }),
+              new TextRun({ text: courtName, size: 21 }),
+              judgeName ? new TextRun({ text: ` (Dómari: ${judgeName})`, size: 21, italics: true }) : new TextRun({ text: "" }),
+            ],
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Málsnúmer:    ", bold: true, size: 21 }),
+              new TextRun({ text: caseItem.case_number, size: 21 }),
+            ],
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Málsaðilar:   ", bold: true, size: 21 }),
+              new TextRun({ text: `${caseItem.title}`, size: 21 }),
+            ],
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Málsaðili:    ", bold: true, size: 21 }),
+              new TextRun({ text: `${partyName} (${partyRole})`, size: 21 }),
+            ],
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Málflytjandi: ", bold: true, size: 21 }),
+              new TextRun({ text: `${attorneyFullName}, f.h. ${lawFirm}`, size: 21 }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 260 },
+            children: [
+              new TextRun({ text: "Dagsetning:   ", bold: true, size: 21 }),
+              new TextRun({ text: dateStr, size: 21 }),
+            ],
+          }),
+
+          // Heading I
+          new Paragraph({
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 200, after: 120 },
+            children: [
+              new TextRun({
+                text: "I. Sundurliðun á lögmannsþóknun (Vinnustundir)",
+                bold: true,
+                size: 24,
+              }),
+            ],
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: timeRows,
+          }),
+
+          // Time totals
+          new Paragraph({
+            spacing: { before: 160 },
+            children: [
+              new TextRun({ text: "Samtals unnar stundir málflytjanda: ", bold: true, size: 21 }),
+              new TextRun({ text: `${summary.billableHours.toLocaleString("is-IS")} klst.`, size: 21 }),
+            ],
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Lögmannsþóknun alls án VSK:         ", bold: true, size: 21 }),
+              new TextRun({ text: `kr. ${summary.legalFeeExVat.toLocaleString("is-IS")}`, size: 21 }),
+            ],
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Virðisaukaskattur (24% VSK):        ", bold: true, size: 21 }),
+              new TextRun({ text: `kr. ${summary.legalFeeVat.toLocaleString("is-IS")}`, size: 21 }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 260 },
+            children: [
+              new TextRun({ text: "LÖGMANNSÞÓKNUN SAMTALS M. VSK:      ", bold: true, size: 21 }),
+              new TextRun({ text: `kr. ${summary.legalFeeIncVat.toLocaleString("is-IS")}`, bold: true, size: 21 }),
+            ],
+          }),
+
+          // Heading II
+          new Paragraph({
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 200, after: 120 },
+            children: [
+              new TextRun({
+                text: "II. Útlagður kostnaður og dómgjöld",
+                bold: true,
+                size: 24,
+              }),
+            ],
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: expenseRows,
+          }),
+
+          // Expense totals
+          new Paragraph({
+            spacing: { before: 160 },
+            children: [
+              new TextRun({ text: "Dómgjöld skv. lögum nr. 88/1991 (0% VSK): ", bold: true, size: 21 }),
+              new TextRun({ text: `kr. ${summary.courtFees.toLocaleString("is-IS")}`, size: 21 }),
+            ],
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Annar útlagður kostnaður án VSK:         ", bold: true, size: 21 }),
+              new TextRun({ text: `kr. ${summary.otherExpensesExVat.toLocaleString("is-IS")}`, size: 21 }),
+            ],
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Virðisaukaskattur af útlögðum kostnaði:  ", bold: true, size: 21 }),
+              new TextRun({ text: `kr. ${summary.otherExpensesVat.toLocaleString("is-IS")}`, size: 21 }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { after: 260 },
+            children: [
+              new TextRun({ text: "ÚTLAGÐUR KOSTNAÐUR SAMTALS:              ", bold: true, size: 21 }),
+              new TextRun({ text: `kr. ${summary.totalExpensesIncVat.toLocaleString("is-IS")}`, bold: true, size: 21 }),
+            ],
+          }),
+
+          // Heading III
+          new Paragraph({
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 200, after: 120 },
+            children: [
+              new TextRun({
+                text: "III. Heildarkrafa um málskostnað",
+                bold: true,
+                size: 24,
+              }),
+            ],
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: clientVatDeductible
+                  ? "1. Lögmannsþóknun málflytjanda án VSK (VSK-skyldur umbj.): "
+                  : "1. Lögmannsþóknun málflytjanda m. VSK:                     ",
+                size: 21,
+              }),
+              new TextRun({ text: `kr. ${finalLegalFee.toLocaleString("is-IS")}`, bold: true, size: 21 }),
+            ],
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: clientVatDeductible
+                  ? "2. Útlagður kostnaður og dómgjöld án VSK:                  "
+                  : "2. Útlagður kostnaður og dómgjöld samtals:                  ",
+                size: 21,
+              }),
+              new TextRun({ text: `kr. ${finalExpenses.toLocaleString("is-IS")}`, bold: true, size: 21 }),
+            ],
+          }),
+          new Paragraph({
+            spacing: { before: 100, after: 200 },
+            children: [
+              new TextRun({
+                text: `HEILDARKRAFA UM MÁLSKOSTNAÐ: kr. ${grandTotal.toLocaleString("is-IS")} ${
+                  clientVatDeductible ? "(án VSK skv. 130. gr. eml.)" : "(með VSK)"
+                }`,
+                bold: true,
+                size: 24,
+              }),
+            ],
+          }),
+
+          // Interest claim
+          ...(options.includeInterestClaim !== false
+            ? [
+                new Paragraph({
+                  spacing: { after: 200 },
+                  children: [
+                    new TextRun({
+                      text:
+                        options.interestText ||
+                        "Þess er krafist að gagnaðili verði dæmdur til að greiða málskostnað þennan með dráttarvöxtum samkvæmt 1. mgr. 6. gr. laga nr. 38/2001 um vexti og verðtryggingu frá þeim degi sem liðinn er mánuður frá uppkvaðningu dóms til greiðsludags.",
+                      italics: true,
+                      size: 20,
+                    }),
+                  ],
+                }),
+              ]
+            : []),
+
+          // Additional remarks
+          ...(options.additionalRemarks
+            ? [
+                new Paragraph({
+                  spacing: { before: 100, after: 200 },
+                  children: [
+                    new TextRun({ text: "Athugasemdir: ", bold: true, size: 20 }),
+                    new TextRun({ text: options.additionalRemarks, size: 20 }),
+                  ],
+                }),
+              ]
+            : []),
+
+          // Sign-off
+          new Paragraph({
+            spacing: { before: 300 },
+            children: [new TextRun({ text: "Virðingarfyllst,", size: 21 })],
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: attorneyFullName,
+                bold: true,
+                size: 21,
+              }),
+            ],
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: `f.h. ${partyName} (${partyRole})`, size: 20 })],
+          }),
+        ],
+      },
+    ],
+  });
+
+  return await Packer.toBlob(doc);
+}
+
 EOF
 fi
 

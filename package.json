@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@types/pdf-parse": "^1.1.5",
+    "docx": "^9.7.1",
     "jszip": "^3.10.2",
     "keycloak-js": "^24.0.4",
     "mammoth": "^1.12.2",
