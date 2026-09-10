@@ -2581,4 +2581,419 @@ export function evaluateCaseDeadlineUrgency(
 EOF
 fi
 
+if [ ! -f "src/lib/legal-drafting.ts" ]; then
+    echo "Restoring src/lib/legal-drafting.ts..."
+    cat <<'EOF' > src/lib/legal-drafting.ts
+import { CaseItem, DocumentItem } from "./store";
+import { LegalStatute, LegalPrecedent } from "./legal-knowledge";
+import { ollama } from "./ollama";
+
+export type LegalDocType = "stefna" | "greinargerð";
+
+export interface LegalDraftRequest {
+  case_id: string;
+  doc_type: LegalDocType;
+  selected_statute_ids?: string[];
+  selected_precedent_ids?: string[];
+  selected_doc_ids?: string[];
+  court_name?: string;
+  claim_amount?: string;
+  custom_claims?: string;
+  lawyer_notes?: string;
+}
+
+export interface LegalDraftResponse {
+  title: string;
+  doc_type: LegalDocType;
+  content: string;
+  summary: string;
+  court_name: string;
+  generated_at: string;
+  model_used: string;
+  inference_source: "ollama_airgap" | "local_rules_engine";
+  stats: {
+    statutes_count: number;
+    precedents_count: number;
+    documents_count: number;
+    word_count: number;
+  };
+  sections: {
+    header: string;
+    claims: string;
+    facts: string;
+    legal_grounds: string;
+    evidence: string;
+    procedure: string;
+  };
+}
+
+export function buildLegalDraftPrompt(
+  c: CaseItem,
+  docType: LegalDocType,
+  statutes: LegalStatute[],
+  precedents: LegalPrecedent[],
+  docs: DocumentItem[],
+  courtName: string,
+  claimAmount?: string,
+  customClaims?: string,
+  lawyerNotes?: string
+): { systemInstruction: string; userPrompt: string } {
+  const parties = c.title.split(" gegn ");
+  const plaintiff = parties[0]?.trim() || "Stefnandi";
+  const defendant = parties[1]?.trim() || "Stefndi";
+
+  const systemInstruction = `Þú ert sérhæfður dómstólalögmaður og réttarfarsfræðingur í íslensku dómskerfi (ILCMS).
+Verkefni þitt er að semja fullbúin, formlega gallalaus og rökstudd drög að ${docType === "stefna" ? "STEFNU" : "GREINARGERÐ"} fyrir ${courtName || "Héraðsdóm Reykjavíkur"} samkvæmt lögum um meðferð einkamála nr. 91/1991.
+
+Mikilvægar reglur um íslenska skjalagerð fyrir dómstóla:
+1. Notaðu staðlaða uppbyggingu íslenskra dómsskjala:
+   - DÓMSTÓLL OG MÁLSNÚMER Í HAUS
+   - AÐILAR OG MÁLFLYTJENDUR
+   - I. DÓMKRÖFUR (Aðalkröfur, varakröfur, vextir og dráttarvextir skv. lögum nr. 38/2001, málskostnaður skv. 130. gr. laga nr. 91/1991)
+   - II. MÁLSATVIK (Heildstæð, tímaröðuð málsatvikalýsing byggð á fyrirliggjandi málsskjölum og lýsingu)
+   - III. MÁLSÁSTÆÐUR OG LAGARÖK (Nákvæm lögfræðileg röksemdafærsla sem fléttar saman öll tilgreind lagaákvæði og dómafordæmi við atvik málsins)
+   - IV. SÖNNUNARGÖGN OG SKJALASKRÁ (Númeruð skrá yfir framlögð skjöl og væntanlega vitnaleiðslu)
+   - V. RÉTTARFAR (Varnarþing, stefnufrestur/greinargerðarfrestur, birting, málshæfi)
+   - DAGSETNING OG UNDIRSKRIFT LÖGMANNS
+2. Textinn skal vera á vandaðri, formfastri lögfræðiíslensku.
+3. Notaðu nákvæmlega þau gögn, lagaákvæði og fordæmi sem eru lögð fram í fyrirspurninni.`;
+
+  const statutesBlock =
+    statutes.length > 0
+      ? statutes
+          .map((s) => `• ${s.act_name} nr. ${s.act_number}, ${s.article} (${s.title}):\n  „${s.text}“`)
+          .join("\n\n")
+      : "Engin sérstök lagaákvæði valin.";
+
+  const precedentsBlock =
+    precedents.length > 0
+      ? precedents
+          .map((p) => `• ${p.case_reference} (${p.court}, ${p.date}) - ${p.parties}:\n  Útdráttur: ${p.summary}\n  Niðurstaða: ${p.key_findings}`)
+          .join("\n\n")
+      : "Engin sérstök dómafordæmi valin.";
+
+  const docsBlock =
+    docs.length > 0
+      ? docs
+          .map((d, idx) => `[Málsskjal ${idx + 1}] ${d.title} (${d.doc_type}, ${d.page_count} bls.):\n${d.summary || d.content?.slice(0, 600) || ""}`)
+          .join("\n\n")
+      : "Engin sérstök málsskjöl tilgreind.";
+
+  const userPrompt = `Vinsamlegast semdu heildstæð og lögfræðilega vönduð drög að ${docType === "stefna" ? "STEFNU" : "GREINARGERÐ"}:
+
+DÓMSTÓLL: ${courtName || "Héraðsdómur Reykjavíkur"}
+MÁLSNÚMER: ${c.case_number}
+HEITI MÁLS: ${c.title}
+STEFNANDI: ${plaintiff}
+STEFNDI: ${defendant}
+LÝSING: ${c.description}
+${claimAmount ? `FJÁRHÆÐARKRAFA: ${claimAmount}` : ""}
+${customClaims ? `SÉRSTÖK KRÖFUGERÐ: ${customClaims}` : ""}
+${lawyerNotes ? `LEIÐBEININGAR LÖGMANNS: ${lawyerNotes}` : ""}
+
+VALIN LAGAÁKVÆÐI:
+${statutesBlock}
+
+VALIN DÓMAFORDÆMI:
+${precedentsBlock}
+
+MÁLSSKJÖL Í MÁLINU:
+${docsBlock}`;
+
+  return { systemInstruction, userPrompt };
+}
+
+export function generateLocalLegalDraft(
+  c: CaseItem,
+  docType: LegalDocType,
+  statutes: LegalStatute[],
+  precedents: LegalPrecedent[],
+  docs: DocumentItem[],
+  courtName: string = "Héraðsdómur Reykjavíkur",
+  claimAmount?: string,
+  customClaims?: string,
+  lawyerNotes?: string
+): LegalDraftResponse {
+  const parties = c.title.split(" gegn ");
+  const plaintiff = parties[0]?.trim() || "Stefnandi";
+  const defendant = parties[1]?.trim() || "Stefndi";
+  const todayStr = new Date().toLocaleDateString("is-IS", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const resolvedAmount =
+    claimAmount ||
+    (c.id === "case-01"
+      ? "kr. 48.500.000"
+      : c.id === "case-02"
+      ? "kr. 21.400.000"
+      : c.id === "case-03"
+      ? "kr. 14.200.000"
+      : "kr. 10.000.000");
+
+  const header = `Í HÉRAÐSDÓMI REYKJAVÍKUR
+Dómþing háð í Dómhúsinu við Lækjartorg
+
+Mál nr. ${c.case_number}
+
+${plaintiff}
+(kt. 010185-2349)
+að heimilisfangi Reykjavík
+Málflytjandi: Guðrún Sigurðardóttir hrl.
+
+gegn
+
+${defendant}
+(kt. 540269-0129)
+að heimilisfangi Reykjavík
+Málflytjandi: Tómas Gunnarsson hdl.
+
+================================================================================
+                               ${docType === "stefna" ? "S T E F N A" : "G R E I N A R G E R Ð"}
+================================================================================`;
+
+  let claims = "";
+  if (docType === "stefna") {
+    claims = `I. DÓMKRÖFUR STEFNANDA
+
+Stefnandi gerir eftirfarandi dómkröfur í málinu:
+
+1. Aðalkrafa:
+   Að stefndi, ${defendant}, verði með dómi dæmdur til að greiða stefnanda, ${plaintiff}, fjárhæð að upphæð ${resolvedAmount}, ásamt vöxtum skv. 8. gr. laga nr. 38/2001 um vexti og dráttarvexti frá kröfudegi og dráttarvöxtum skv. 1. mgr. 6. gr., sbr. 9. gr. sömu laga frá birtingardegi stefnu þessarar til greiðsludags.
+
+2. Varakrafa:
+   Til vara er þess krafist að stefndi verði dæmdur til greiðslu skaðabóta eða afsláttar eftir mati og sanngirnisúrlausn dómsins með sömu vöxtum og dráttarvöxtum og greinir í aðalkröfu.
+
+3. Málskostnaðarkrafa:
+   Að stefndi verði dæmdur til að greiða stefnanda málskostnað að skaðlausu samkvæmt framlögðum málskostnaðarreikningi málflytjanda stefnanda, sbr. 130. gr. laga nr. 91/1991 um meðferð einkamála, ásamt virðisaukaskatti skv. lögum nr. 50/1988.
+${customClaims ? `\nSérstök viðbótarkrafa stefnanda:\n${customClaims}` : ""}`;
+  } else {
+    claims = `I. DÓMKRÖFUR STEFNDA
+
+Stefndi gerir eftirfarandi dómkröfur í málinu:
+
+1. Aðalkrafa:
+   Að stefndi, ${defendant}, verði sýknaður af öllum kröfum stefnanda, ${plaintiff}, í máli þessu.
+
+2. Varakrafa (til frávísunar):
+   Til vara er þess krafist að máli þessu verði vísað frá dómi vegna vanefnda á lögbundnum stefnufresti skv. 80. gr. laga nr. 91/1991 eða ófullnægjandi málatilbúnaðar skv. 80. og 96. gr. sömu laga.
+
+3. Þrautavarakrafa:
+   Til þrautavara að greiðslur stefnda verði stórlega lækkaðar með tilliti til eigin sakar stefnanda eða ófyrirséðra samningsatvika.
+
+4. Málskostnaðarkrafa:
+   Að stefnandi verði dæmdur til að greiða stefnda fullan málskostnað skv. 130. gr. laga nr. 91/1991 um meðferð einkamála, ásamt virðisaukaskatti.
+${customClaims ? `\nSérstakar varnarkröfur stefnda:\n${customClaims}` : ""}`;
+  }
+
+  const docFacts = docs
+    .map((d, i) => `   (${i + 1}) Skv. málsskjali „${d.title}“ (${d.doc_type}): ${d.summary || "Staðfesting á efnisþáttum málsins."}`)
+    .join("\n");
+
+  const facts = `II. MÁLSATVIK
+
+${c.description}
+
+Málsatvik eru nánar rakin í eftirfarandi málsskjölum sem lögð eru fram til stuðnings málinu:
+${docFacts || "   Málsatvik styðjast við framlögð gögn aðila og málskjöl í dómaskjalaskrá."}
+
+Aðilar áttu í lögmætu og bindandi samningssambandi. Ágreiningur sá sem hér liggur fyrir dómstólum varðar vanefndir á samningsbundnum og lögmæltum skyldum. Stefnandi sendi tímanlegar skriflegar aðfinnslur og tilkynningar um leið og forsendur lágu fyrir. Stefndi hefur engu að síður neitað að efna skyldur sínar eða bæta fyrir tjónið með fullnægjandi hætti, sem gerir dómstólameðferð óumflýjanlega.
+${lawyerNotes ? `\nÁrétting lögmanns um málsatvik:\n${lawyerNotes}` : ""}`;
+
+  const statutesArg =
+    statutes.length > 0
+      ? statutes
+          .map((s) => {
+            return `• ${s.act_name} nr. ${s.act_number} — ${s.article} (${s.title}):
+  Samkvæmt ákvæðinu: „${s.text}“
+  Ákvæði þetta hefur beina þýðingu í málinu. Það rennir ótvíræðum lagastoðum undir réttarstöðu aðila og styður ${docType === "stefna" ? "kröfugerð stefnanda um full efndabót og lögvarða hagsmuni" : "varnir stefnda um sýknu og frávísun málsins"}.`;
+          })
+          .join("\n\n")
+      : `• Lög um meðferð einkamála nr. 91/1991:
+  Byggt er á almennum meginreglum einkamálaréttar um sönnunarbyrði, málshæfi og réttarfarslega hagsmuni.`;
+
+  const precedentsArg =
+    precedents.length > 0
+      ? `\n\nTil stuðnings er sérstaklega vísað til eftirfarandi dómafordæma:\n` +
+        precedents
+          .map((p) => {
+            return `• ${p.case_reference} (${p.court}, ${p.date}):
+  Í dóminum komst rétturinn að þeirri niðurstöðu að: „${p.key_findings}“.`;
+          })
+          .join("\n\n")
+      : "";
+
+  const legalGrounds = `III. MÁLSÁSTÆÐUR OG LAGARÖK
+
+Kröfur ${docType === "stefna" ? "stefnanda" : "stefnda"} í máli þessu byggjast á gildandi íslenskum lögum, formfestum réttarheimildum og viðurkenndri dómvenju Hæstaréttar og Landsréttar.
+
+Löggilt lagaákvæði sem reynir á í málinu:
+${statutesArg}${precedentsArg}
+
+Krafa um vexti og dráttarvexti styðst við 8. og 9. gr. laga nr. 38/2001 um vexti og dráttarvexti.
+Krafa um málskostnað er studd 1. mgr. 130. gr. laga nr. 91/1991 um meðferð einkamála, enda hefur rekstur máls þessa haft í för með sér umtalsverðan kostnað vegna lögfræðiaðstoðar og gagnaöflunar.`;
+
+  const evidenceList = docs
+    .map(
+      (d, i) =>
+        `   Skjal nr. ${i + 1}: „${d.title}“ (${d.doc_type}, ${d.page_count} bls.) — Varðar: ${d.summary || "Sönnun á málsatvikum"}.`
+    )
+    .join("\n");
+
+  const evidence = `IV. SÖNNUNARGÖGN OG SKJALASKRÁ
+
+${docType === "stefna" ? "Stefnandi" : "Stefndi"} leggur fram eftirfarandi málsskjöl til sönnunar á málsástæðum sínum í samræmi við 101. gr. laga nr. 91/1991:
+
+${evidenceList || "   1. Skrifleg samningsgögn og tilkynningar aðila.\n   2. Framlögð vottorð og skoðunarskýrslur sérfræðinga."}
+
+Þá áskilur málsaðili sér rétt til að leggja fram viðbótargögn, leiða vitni fyrir dóm og krefjast dómkvaddra matsmanna ef þörf krefur við rekstur málsins.`;
+
+  let procedure = "";
+  if (docType === "stefna") {
+    procedure = `V. RÉTTARFAR OG STEFNUFRESTUR
+
+Mál þetta er höfðað fyrir ${courtName || "Héraðsdómi Reykjavíkur"} á grundvelli almennra reglna um varnarþing skv. 24. gr. laga nr. 91/1991 um meðferð einkamála.
+
+Stefnufrestur er ákveðinn í samræmi við 80. gr. laga nr. 91/1991 og skal vera minnst 3 sólarhringar ef stefndi hefur búsetu í sama dómumdæmi, en 14 sólarhringar ef búseta er utan dómumdæmis.
+
+Stefndi er hér með löglega kallaður til að mæta fyrir dómþingi ${courtName || "Héraðsdóms Reykjavíkur"} sem háð verður í Dómhúsinu við Lækjartorg, til að hlýða á dómkröfur stefnanda, leggja fram varnir og gögn.
+
+Sérstaklega er vakin athygli stefnda á því að mæti hann ekki við þingfestingu málsins eða láti ekki lögmætan umboðsmann sækja þing, má kveða upp útivistardóm samkvæmt kröfum stefnanda skv. 1. mgr. 113. gr. laga nr. 91/1991.`;
+  } else {
+    procedure = `V. RÉTTARFAR OG FRESTIR
+
+Greinargerð þessi er lögð fram í samræmi við 97. gr. laga nr. 91/1991 um meðferð einkamála innan þess frests sem dómari veitti við þingfestingu málsins.
+
+Stefndi andmælir öllum kröfum stefnanda sem órökstuddum og ósönnuðum og krefst þess að frestur verði veittur til frekari gagnaöflunar skv. 101. gr. sömu laga.`;
+  }
+
+  const fullContent = `${header}
+
+${claims}
+
+${facts}
+
+${legalGrounds}
+
+${evidence}
+
+${procedure}
+
+Reykjavík, ${todayStr}
+
+Virðingarfyllst,
+Fyrir hönd ${docType === "stefna" ? plaintiff : defendant},
+
+___________________________________________
+${docType === "stefna" ? "Guðrún Sigurðardóttir hrl." : "Tómas Gunnarsson hdl."}
+Lögmaður / Málflytjandi`;
+
+  const wordCount = fullContent.split(/\s+/).filter(Boolean).length;
+
+  return {
+    title: `${docType === "stefna" ? "Stefna" : "Greinargerð"} í máli ${c.case_number} (${c.title})`,
+    doc_type: docType,
+    content: fullContent,
+    summary: `Sjálfvirk skjalagerð: Drög að ${docType} í máli ${c.case_number} byggð á ${statutes.length} völdum lagaákvæðum, ${precedents.length} dómafordæmum og ${docs.length} málsskjölum.`,
+    court_name: courtName,
+    generated_at: new Date().toISOString(),
+    model_used: "icelandic-legal-rules-engine",
+    inference_source: "local_rules_engine",
+    stats: {
+      statutes_count: statutes.length,
+      precedents_count: precedents.length,
+      documents_count: docs.length,
+      word_count: wordCount,
+    },
+    sections: {
+      header,
+      claims,
+      facts,
+      legal_grounds: legalGrounds,
+      evidence,
+      procedure,
+    },
+  };
+}
+
+export async function generateLegalDraft(
+  c: CaseItem,
+  docType: LegalDocType,
+  statutes: LegalStatute[],
+  precedents: LegalPrecedent[],
+  docs: DocumentItem[],
+  courtName: string = "Héraðsdómur Reykjavíkur",
+  claimAmount?: string,
+  customClaims?: string,
+  lawyerNotes?: string
+): Promise<LegalDraftResponse> {
+  const { systemInstruction, userPrompt } = buildLegalDraftPrompt(
+    c,
+    docType,
+    statutes,
+    precedents,
+    docs,
+    courtName,
+    claimAmount,
+    customClaims,
+    lawyerNotes
+  );
+
+  // PATH 1: Ollama Local Air-Gap Inference (Local Host / K3s)
+  try {
+    const ollamaResponse = await ollama.chat([
+      { role: "system", content: systemInstruction },
+      { role: "user", content: userPrompt },
+    ]);
+
+    if (ollamaResponse.isRealInference && ollamaResponse.text?.trim()?.length > 200) {
+      const generatedText = ollamaResponse.text.trim();
+      const wordCount = generatedText.split(/\s+/).filter(Boolean).length;
+      return {
+        title: `${docType === "stefna" ? "Stefna" : "Greinargerð"} í máli ${c.case_number} (${c.title})`,
+        doc_type: docType,
+        content: generatedText,
+        summary: `Staðbundið Ollama-skjal að ${docType} í máli ${c.case_number}.`,
+        court_name: courtName,
+        generated_at: new Date().toISOString(),
+        model_used: ollamaResponse.modelUsed || "ollama-legal-gemma",
+        inference_source: "ollama_airgap",
+        stats: {
+          statutes_count: statutes.length,
+          precedents_count: precedents.length,
+          documents_count: docs.length,
+          word_count: wordCount,
+        },
+        sections: {
+          header: "Í HÉRAÐSDÓMI REYKJAVÍKUR",
+          claims: "I. DÓMKRÖFUR",
+          facts: "II. MÁLSATVIK",
+          legal_grounds: "III. MÁLSÁSTÆÐUR OG LAGARÖK",
+          evidence: "IV. SÖNNUNARGÖGN",
+          procedure: "V. RÉTTARFAR",
+        },
+      };
+    }
+  } catch (ollamaErr: any) {
+    console.warn("[Draft API] Ollama call error, proceeding to local rules engine:", ollamaErr?.message || ollamaErr);
+  }
+
+  return generateLocalLegalDraft(
+    c,
+    docType,
+    statutes,
+    precedents,
+    docs,
+    courtName,
+    claimAmount,
+    customClaims,
+    lawyerNotes
+  );
+}
+EOF
+fi
+
 echo "Library files verification and restoration complete."
+

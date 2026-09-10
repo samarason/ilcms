@@ -5,6 +5,8 @@ import { useAuth } from "@/lib/auth";
 import { LoginView } from "@/components/LoginView";
 import { BillingManagementTab } from "@/components/BillingManagementTab";
 import { LegalCompareModal } from "@/components/LegalCompareModal";
+import { LegalDraftingView } from "@/components/LegalDraftingView";
+import { PRE_SEEDED_STATUTES } from "@/lib/legal-knowledge";
 import { evaluateCaseDeadlineUrgency, getDeadlineHoursRemaining } from "@/lib/deadline-urgency";
 
 export default function Dashboard() {
@@ -58,7 +60,7 @@ export default function Dashboard() {
   };
 
   // New states for Statutory Deadline Engine, Court Bundle, Precedents, and Billing
-  const [activeTab, setActiveTab] = useState<"docs" | "deadlines" | "bundle" | "law" | "billing">("docs");
+  const [activeTab, setActiveTab] = useState<"docs" | "deadlines" | "bundle" | "law" | "drafting" | "billing">("docs");
   const [deadlines, setDeadlines] = useState<any[]>([]);
   const [allDeadlines, setAllDeadlines] = useState<any[]>([]);
   const [urgentFilterOnly, setUrgentFilterOnly] = useState<boolean>(false);
@@ -1589,6 +1591,37 @@ export default function Dashboard() {
                   ⚖️ Laga- og dómasafn
                 </button>
                 <button
+                  id="tab-drafting-btn"
+                  onClick={() => setActiveTab("drafting")}
+                  style={{
+                    padding: "8px 14px",
+                    background: activeTab === "drafting" ? "#eff6ff" : "transparent",
+                    color: activeTab === "drafting" ? "#2563eb" : "#64748b",
+                    border: "none",
+                    borderBottom: activeTab === "drafting" ? "2px solid #2563eb" : "2px solid transparent",
+                    fontWeight: activeTab === "drafting" ? 600 : 500,
+                    cursor: "pointer",
+                    fontSize: "0.85rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  ✍️ Sjálfvirk skjalagerð
+                  <span
+                    style={{
+                      fontSize: "0.68rem",
+                      background: activeTab === "drafting" ? "#2563eb" : "#dbeafe",
+                      color: activeTab === "drafting" ? "#ffffff" : "#1e40af",
+                      padding: "1px 6px",
+                      borderRadius: "10px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Mynda drög
+                  </span>
+                </button>
+                <button
                   onClick={() => setActiveTab("billing")}
                   style={{
                     padding: "8px 14px",
@@ -1654,6 +1687,28 @@ export default function Dashboard() {
                       <span style={{ fontSize: "0.74rem", color: "#64748b" }}>
                         Styður Word (.docx), PDF og textaskjöl
                       </span>
+                      <button
+                        type="button"
+                        id="btn-draft-from-docs"
+                        onClick={() => setActiveTab("drafting")}
+                        style={{
+                          marginLeft: "auto",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          background: "#eff6ff",
+                          color: "#1d4ed8",
+                          border: "1px solid #bfdbfe",
+                          borderRadius: "4px",
+                          padding: "6px 12px",
+                          fontSize: "0.82rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <span>✍️</span>
+                        <span>Mynda drög að stefnu/greinargerð</span>
+                      </button>
                     </form>
                   </div>
 
@@ -2570,6 +2625,28 @@ export default function Dashboard() {
                             </span>
                           )}
                         </button>
+                        <button
+                          id="btn-draft-from-law"
+                          type="button"
+                          onClick={() => setActiveTab("drafting")}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            background: "#16a34a",
+                            color: "#ffffff",
+                            padding: "6px 14px",
+                            borderRadius: "6px",
+                            border: "1px solid #15803d",
+                            fontSize: "0.82rem",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
+                          }}
+                        >
+                          <span>✍️</span>
+                          <span>Mynda drög</span>
+                        </button>
                         <span
                           style={{
                             fontSize: "0.72rem",
@@ -2831,6 +2908,23 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </div>
+              )}
+
+              {/* TAB: SJÁLFVIRK SKJALAGERÐ (MYNDA DRÖG) */}
+              {activeTab === "drafting" && (
+                <LegalDraftingView
+                  activeCase={activeCase}
+                  caseDocs={docs}
+                  statutes={PRE_SEEDED_STATUTES}
+                  precedents={precedents}
+                  preSelectedStatuteIds={compareSelectedItems.filter((i) => i.type === "statute").map((i) => i.id)}
+                  preSelectedPrecedentIds={compareSelectedItems.filter((i) => i.type === "precedent").map((i) => i.id)}
+                  onDocumentSaved={() => {
+                    if (selectedCaseId) {
+                      fetchDocs(selectedCaseId);
+                    }
+                  }}
+                />
               )}
 
               {/* TAB 5: BILLING & COURT COST STATEMENT (130. gr. eml.) */}

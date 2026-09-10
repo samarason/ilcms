@@ -78,6 +78,60 @@ export async function POST(
 ) {
   try {
     const caseId = params.id;
+    const contentType = request.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      const json = await request.json();
+      const docTitle = json.title || "Ónefnt málsskjal";
+      const fileContent = json.content || "";
+      const docType = json.doc_type || "Málsskjal";
+      const pageCount = Math.max(1, Math.ceil(fileContent.length / 1500));
+
+      const initialVersion = {
+        id: "v-" + Math.random().toString(36).substring(2, 9),
+        version_number: 1,
+        created_at: new Date().toISOString(),
+        author: json.author || "Lögmaður (Sjálfvirk skjalagerð)",
+        change_summary: json.change_summary || "Sjálfvirk drög vistuð í málaskrá",
+        title: docTitle,
+        content: fileContent,
+        page_count: pageCount,
+        is_pdf: false,
+        is_docx: false,
+        file_size: Buffer.byteLength(fileContent, "utf8"),
+      };
+
+      const newDoc: DocumentItem = {
+        id: "d-" + Math.random().toString(36).substring(2, 9),
+        case_id: caseId,
+        title: docTitle,
+        doc_type: docType,
+        status: "READY",
+        page_count: pageCount,
+        created_at: new Date().toISOString(),
+        filing_date: new Date().toISOString().split("T")[0],
+        author: json.author || "Lögmaður (Sjálfvirk skjalagerð)",
+        summary: json.summary || `Sjálfvirk drög að ${docType} vistuð í málaskrá.`,
+        content: fileContent,
+        is_pdf: false,
+        is_docx: false,
+        file_size: Buffer.byteLength(fileContent, "utf8"),
+        version: 1,
+        versions: [initialVersion],
+      };
+
+      docsStore.unshift(newDoc);
+
+      return NextResponse.json({
+        id: newDoc.id,
+        status: "READY",
+        title: docTitle,
+        page_count: newDoc.page_count,
+        version: newDoc.version,
+        versions: newDoc.versions,
+      });
+    }
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const titleForm = formData.get("title") as string | null;

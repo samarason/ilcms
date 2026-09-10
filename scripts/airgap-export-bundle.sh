@@ -56,6 +56,7 @@ REQUIRED_LIBS=(
     "src/lib/court-bundle.ts"
     "src/lib/statutory-deadlines.ts"
     "src/lib/deadline-urgency.ts"
+    "src/lib/legal-drafting.ts"
 )
 for lib in "${REQUIRED_LIBS[@]}"; do
     if [ ! -f "$lib" ]; then

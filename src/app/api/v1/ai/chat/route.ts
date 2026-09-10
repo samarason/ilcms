@@ -667,6 +667,25 @@ Krafist er greiðslu skaðabóta að fjárhæð kr. 21.400.000 vegna 25% varanle
         { citation_key: "Örorkumat og sérfræðivottorð læknis.pdf", excerpt: "Niðurstaða læknisfræðilegs mats á 25% varanlegri örorku." },
         { citation_key: "Stefna vegna líkamstjóns.pdf", excerpt: "Kröfugerð stefnanda um kr. 21.400.000 í skaðabætur." }
       );
+    } else if (c.id === "case-04") {
+      answer = `Kröfugerð í flýtimeðferðarmáli ${c.case_number} (${c.title}):
+1. Stefnandi (Sparisjóður Austurlands hf.) krefst dómfellingar á gjaldföllnu láni að fjárhæð kr. 35.800.000 auk dráttarvaxta skv. lögum nr. 38/2001 á grundvelli sjálfskuldarábyrgðar.
+2. Stefndu (Norðurfell ehf. og ábyrgðarmaður) krefjast sýknu, til vara frávísunar, með vísan til þess að lögboðinn 14 daga greiðslujöfnunarfrestur hafi ekki verið veittur fyrir gjaldfellingu og að málið uppfylli ekki skilyrði flýtimeðferðar.
+Bráður greinargerðarfrestur rennur út innan skamms skv. 97. gr. laga nr. 91/1991.`;
+      citations.push(
+        { citation_key: "Stefna í flýtimeðferðarmáli og gjaldfelling.pdf", excerpt: "Krafa um greiðslu kr. 35.800.000 og flýtimeðferð." },
+        { citation_key: "Drög að greinargerð og varnarorðum stefnda.docx", excerpt: "Sýknukrafa og andmæli vegna vanreifaðrar gjaldfellingar." },
+        { citation_key: "97. gr. laga nr. 91/1991", excerpt: "Greinargerðarfrestur og fylgigögn stefnda." }
+      );
+    } else if (c.id === "case-05") {
+      answer = `Kröfugerð í bráðamáli ${c.case_number} (${c.title}):
+1. Efnisdómkrafa: Viðurkenning á rétti stefnanda til fullrar greiðsluþátttöku Sjúkratrygginga Íslands í lífsnauðsynlegri sérhæfðri krabbameinsmeðferð við Háskólasjúkrahúsið í Uppsölum, að fjárhæð kr. 18.600.000.
+2. Bráðabirgðaákvörðun dómara: Krafist er að dómari kveði samdægurs upp bráðabirgðaúrskurð skv. 2. mgr. 102. gr. laga nr. 91/1991 um að Sjúkratryggingum Íslands sé gert skylt að leggja fram greiðslutryggingu svo meðferð hefjist tafarlaust án þess að beðið sé endanlegs dóms.`;
+      citations.push(
+        { citation_key: "Stefna og krafa um bráðabirgðaúrskurð dómara.pdf", excerpt: "Krafa um bráðabirgðaúrskurð dómara skv. 102. gr. eml." },
+        { citation_key: "Læknisfræðilegt bráðamat og yfirlýsing yfirlæknis.pdf", excerpt: "Staðfesting á lífsbjargandi eðli meðferðar og brýnni nauðsyn." },
+        { citation_key: "2. mgr. 102. gr. laga nr. 91/1991", excerpt: "Heimild dómara til að kveða upp bráðabirgðaúrskurð um brýnar ráðstafanir." }
+      );
     } else {
       answer = `Kröfugerð stefnanda (${plaintiff}) í máli ${c.case_number}:
 Krafist er hlutfallslegs afsláttar af kaupverði fasteignarinnar að Laugavegi 45 (til vara skaðabóta) vegna leyndra rakaskemmda og myglu á grundvelli 17. og 27. gr. laga nr. 40/2002. Fjárhæðarkrafan nemur kr. 14.200.000 skv. mati Náttúrustofu á úrbótakostnaði.`;

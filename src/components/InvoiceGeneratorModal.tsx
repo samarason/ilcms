@@ -35,10 +35,26 @@ export function InvoiceGeneratorModal({
 
   const [clientName, setClientName] = useState(defaultClientName);
   const [clientKennitala, setClientKennitala] = useState(
-    activeCase?.id === "case-01" ? "520412-0890" : activeCase?.id === "case-02" ? "140582-3929" : ""
+    activeCase?.id === "case-01"
+      ? "520412-0890"
+      : activeCase?.id === "case-02"
+      ? "140582-3929"
+      : activeCase?.id === "case-03"
+      ? "040388-2199"
+      : activeCase?.id === "case-04"
+      ? "620598-2139"
+      : activeCase?.id === "case-05"
+      ? "120385-4819"
+      : ""
   );
   const [clientAddress, setClientAddress] = useState(
-    activeCase?.id === "case-01" ? "Skútuvogi 12, 104 Reykjavík" : ""
+    activeCase?.id === "case-01"
+      ? "Skútuvogi 12, 104 Reykjavík"
+      : activeCase?.id === "case-04"
+      ? "Glerárgötu 34, 600 Akureyri"
+      : activeCase?.id === "case-05"
+      ? "Hringbraut 101, 101 Reykjavík"
+      : ""
   );
 
   // Law firm / Attorney details
