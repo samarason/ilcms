@@ -1,12 +1,13 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # ==============================================================================
 # ILCMS Library Restorer
 # Automatically restores src/lib/* modules if missing from the working directory.
+# Compatible with both standard POSIX /bin/sh and bash.
 # ==============================================================================
-set -euo pipefail
+set -e
 
 # Ensure execution from project root
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${PROJECT_ROOT}"
 
@@ -2442,6 +2443,139 @@ export async function generateCourtCostDocxBlob(
   });
 
   return await Packer.toBlob(doc);
+}
+
+EOF
+fi
+
+if [ ! -f "src/lib/deadline-urgency.ts" ]; then
+    echo "Restoring src/lib/deadline-urgency.ts..."
+    cat <<'EOF' > src/lib/deadline-urgency.ts
+// Utility to evaluate statutory and procedural deadline urgency
+// Flags any deadline occurring within the next 48 hours for immediate prioritization
+
+export interface DeadlineUrgencyResult {
+  hasDeadlines: boolean;
+  isUrgent48h: boolean;
+  urgencyLevel: "critical" | "warning" | "normal";
+  closestDeadline: any | null;
+  hoursRemaining: number;
+  badgeText: string;
+  badgeColor: {
+    bg: string;
+    text: string;
+    border: string;
+    icon: string;
+  };
+}
+
+/**
+ * Parses YYYY-MM-DD (or ISO string) into a Date object.
+ * Assumes end-of-business court closing time (16:00:00 local time) if only date is provided.
+ */
+export function parseDeadlineToDate(targetDateStr: string): Date {
+  if (!targetDateStr) return new Date(NaN);
+
+  if (targetDateStr.includes("T")) {
+    return new Date(targetDateStr);
+  }
+
+  const parts = targetDateStr.split("-").map((p) => parseInt(p, 10));
+  if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+    return new Date(parts[0], parts[1] - 1, parts[2], 16, 0, 0);
+  }
+
+  return new Date(targetDateStr);
+}
+
+/**
+ * Calculates remaining hours from now until target date.
+ */
+export function getDeadlineHoursRemaining(targetDateStr: string, now: Date = new Date()): number {
+  const target = parseDeadlineToDate(targetDateStr);
+  if (isNaN(target.getTime())) return Infinity;
+  const diffMs = target.getTime() - now.getTime();
+  return diffMs / (1000 * 60 * 60);
+}
+
+/**
+ * Evaluates whether a case has any deadlines within the next 48 hours.
+ */
+export function evaluateCaseDeadlineUrgency(
+  caseId: string,
+  deadlinesList: any[],
+  now: Date = new Date()
+): DeadlineUrgencyResult {
+  const caseDeadlines = (deadlinesList || []).filter((d) => d.case_id === caseId);
+
+  if (!caseDeadlines.length) {
+    return {
+      hasDeadlines: false,
+      isUrgent48h: false,
+      urgencyLevel: "normal",
+      closestDeadline: null,
+      hoursRemaining: Infinity,
+      badgeText: "",
+      badgeColor: { bg: "", text: "", border: "", icon: "" },
+    };
+  }
+
+  const sorted = [...caseDeadlines].sort((a, b) => {
+    const tA = parseDeadlineToDate(a.target_date).getTime();
+    const tB = parseDeadlineToDate(b.target_date).getTime();
+    return tA - tB;
+  });
+
+  const closest = sorted[0];
+  const hoursRemaining = getDeadlineHoursRemaining(closest.target_date, now);
+
+  if (hoursRemaining <= 24) {
+    const isOverdue = hoursRemaining < 0;
+    const badgeText = isOverdue ? "Útrunnið!" : `Innan 24 klst (${Math.max(1, Math.round(hoursRemaining))} klst)`;
+
+    return {
+      hasDeadlines: true,
+      isUrgent48h: true,
+      urgencyLevel: "critical",
+      closestDeadline: closest,
+      hoursRemaining,
+      badgeText,
+      badgeColor: {
+        bg: "#fee2e2",
+        text: "#b91c1c",
+        border: "#fca5a5",
+        icon: "🚨",
+      },
+    };
+  }
+
+  if (hoursRemaining <= 48) {
+    const hours = Math.round(hoursRemaining);
+    return {
+      hasDeadlines: true,
+      isUrgent48h: true,
+      urgencyLevel: "warning",
+      closestDeadline: closest,
+      hoursRemaining,
+      badgeText: `Innan 48 klst (${hours} klst)`,
+      badgeColor: {
+        bg: "#fef3c7",
+        text: "#b45309",
+        border: "#fde68a",
+        icon: "⚠️",
+      },
+    };
+  }
+
+  return {
+    hasDeadlines: true,
+    isUrgent48h: false,
+    urgencyLevel: "normal",
+    closestDeadline: closest,
+    hoursRemaining,
+    badgeText: "",
+    badgeColor: { bg: "", text: "", border: "", icon: "" },
+  };
 }
 
 EOF

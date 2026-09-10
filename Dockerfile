@@ -1,8 +1,8 @@
 # Multi-stage Dockerfile for ILCMS Air-Gapped Web Application
 FROM node:20-alpine AS builder
 
-# Required by Next.js SWC on Alpine Linux
-RUN apk add --no-cache libc6-compat
+# Required by Next.js SWC on Alpine Linux and restore scripts
+RUN apk add --no-cache libc6-compat bash
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat bash
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
