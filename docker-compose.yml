@@ -15,7 +15,7 @@ services:
     container_name: ilcms-ollama
     restart: unless-stopped
     ports:
-      - "127.0.0.1:11434:11434"
+      - "127.0.0.1:11434:11434" # Bound strictly to local loopback
     networks:
       - ilcms_ai_isolated_net
     volumes:

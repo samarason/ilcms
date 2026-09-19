@@ -8,6 +8,7 @@
     "prebuild": "sh ./scripts/restore-lib.sh",
     "build": "next build",
     "start": "next start -p 3000 -H 0.0.0.0",
+    "install:local": "./install.sh",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

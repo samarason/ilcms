@@ -1,6 +1,8 @@
 {
   "name": "ILCMS Málastjórnunarkerfi",
-  "description": "Icelandic Legal Case Management System - 100% Air-Gapped",
+  "description": "Icelandic Legal Case Management System with 100% Air-Gapped AI and One-Step Local Laptop Installation",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

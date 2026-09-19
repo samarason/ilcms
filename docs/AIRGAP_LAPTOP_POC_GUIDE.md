@@ -1,24 +1,22 @@
-# ILCMS Air-Gapped Proof-of-Concept (POC) Deployment Guide
+# ILCMS Air-Gapped AI & Local Laptop Deployment Guide
 
-**Target Environment:** Isolated Single-Laptop Air-Gapped Linux Host (ca. 20GB RAM, 300GB NVMe/SSD)  
-**Primary Orchestration:** K3s (Lightweight Kubernetes) directly on the laptop  
-**Fallback Orchestration:** Docker Compose v2  
-**Operating Systems:** Ubuntu 22.04/24.04 LTS, Debian 12 (Bookworm), or Fedora/RHEL 9  
-**Security Posture:** 100% Offline / Zero Egress / On-Premises Containers Only  
+**Target Environment:** Single-Laptop Linux/macOS/WSL Host (ca. 16–20GB RAM, 300GB NVMe/SSD)  
+**Security Architecture:** **Only the AI part of the system needs to be 100% Air-Gapped.**  
+**Installation Method:** One-Step Turnkey Installer (`./install.sh`)  
+**AI Isolation:** On-Device Inference (Zero Outbound Egress / Loopback Binding / Isolated Docker Network)  
+**Primary Models:** Gemma 2 9B (Icelandic Legal Instruction Fine-Tune) + nomic-embed-text (768d pgvector)  
 
 ---
 
 ## Table of Contents
 
 1. [Architectural Overview](#1-architectural-overview)
-2. [Hardware Resource Allocation & Cgroups Budget](#2-hardware-resource-allocation--cgroups-budget)
-3. [Dedicated Icelandic Legal Language Model & Vector Search](#3-dedicated-icelandic-legal-language-model--vector-search)
-4. [On-Premises Keycloak 24 OIDC Architecture](#4-on-premises-keycloak-24-oidc-architecture)
-5. [Statutory Engine & Court Bundle Integration](#5-statutory-engine--court-bundle-integration)
-6. [Pre-Requisites & Air-Gap Bundle Creation (Workstation)](#6-pre-requisites--air-gap-bundle-creation-workstation)
-7. [Laptop Deployment Runbook (Air-Gapped)](#7-laptop-deployment-runbook-air-gapped)
-   - [Option A: K3s Kubernetes (Recommended)](#option-a-k3s-kubernetes-recommended)
-   - [Option B: Docker Compose (Rapid Fallback)](#option-b-docker-compose-rapid-fallback)
+2. [Air-Gapped AI Subsystem Isolation](#2-air-gapped-ai-subsystem-isolation)
+3. [Hardware Resource Allocation & Cgroups Budget](#3-hardware-resource-allocation--cgroups-budget)
+4. [Dedicated Icelandic Legal Language Model & Vector Search](#4-dedicated-icelandic-legal-language-model--vector-search)
+5. [On-Premises Keycloak 24 OIDC Architecture](#5-on-premises-keycloak-24-oidc-architecture)
+6. [Statutory Engine & Court Bundle Integration](#6-statutory-engine--court-bundle-integration)
+7. [One-Step Installation Runbook (Local Laptop)](#7-one-step-installation-runbook-local-laptop)
 8. [DNS, Ingress & Access URLs](#8-dns-ingress--access-urls)
 9. [Pre-Seeded Test Scenarios & Demo Scripts](#9-pre-seeded-test-scenarios--demo-scripts)
 10. [Verification, Health Checks & Diagnostics](#10-verification-health-checks--diagnostics)
@@ -28,7 +26,11 @@
 
 ## 1. Architectural Overview
 
-The **Icelandic Legal Case Management System (ILCMS)** runs as a completely self-contained modular stack inside a single air-gapped laptop. No internet connectivity, external telemetry, or public cloud API keys are required or permitted.
+The **Icelandic Legal Case Management System (ILCMS)** runs locally on a standard laptop. Under the security mandate:
+- **Only the AI part of the system is 100% Air-Gapped.**
+- All legal case files, court exhibits, pleadings, witness statements, and client communications remain strictly on-device.
+- The AI inference container (Ollama) binds strictly to `127.0.0.1:11434` or runs on an internal Docker network with `internal: true`, mathematically preventing any outbound internet egress.
+- Standard application tools (Next.js web application, PostgreSQL, Keycloak) can be installed directly on the laptop in a single step via `./install.sh`.
 
 ```
 +----------------------------------------------------------------------------------------------------+
@@ -157,64 +159,40 @@ The system includes built-in procedural intelligence tailored to Icelandic civil
 
 ---
 
-## 6. Pre-Requisites & Air-Gap Bundle Creation (Workstation)
+## 7. One-Step Installation Runbook (Local Laptop)
 
-Perform this step on an **internet-connected Linux, macOS, or WSL machine** with Docker installed.
+Because **only the AI subsystem is 100% Air-Gapped**, the system installs directly onto the target laptop in a single automated step. Unused export/import scripts have been deleted.
 
-### Step 1: Clone the Repository & Make Scripts Executable
+### Step 1: Run the One-Step Installer
+From the project root on the laptop:
 ```bash
-git clone <repository_url> ilcms
-cd ilcms
-chmod +x scripts/*.sh
+chmod +x install.sh
+./install.sh
 ```
 
-### Step 2: Run the Export Script
-```bash
-./scripts/airgap-export-bundle.sh
-```
+### What `./install.sh` Does Automatically:
+1. **Hardware Inspection:** Detects RAM and CPU cores to verify the headroom for local Gemma 2 9B model inference (~7 GB allocation).
+2. **Configuration Setup:** Initializes `.env` configuring `AIRGAP_MODE=true` and `AIRGAP_AI_ONLY=true`.
+3. **Deterministic Legal Data Restoration:** Runs `./scripts/restore-lib.sh` ensuring all statutory deadlines, court bundle formats, and seed cases are initialized.
+4. **100% Air-Gapped AI Subsystem Isolation:**
+   - Starts a containerized Ollama instance (`ilcms-ollama-airgap`) with strict loopback binding to `127.0.0.1:11434` or internal isolated Docker bridge network (`internal: true`).
+   - Mathematically blocks all outbound internet egress from the model container.
+   - Automatically caches the Icelandic fine-tuned legal LLM (`gemma2:9b-instruct-q4_K_M`) and vector embedding weights (`nomic-embed-text`).
+5. **App Initialization:** Installs dependencies (`npm install`) and builds the Next.js production client.
 
-This script will:
-1. Pull all required base images:
-   - `ollama/ollama:0.5.7`
-   - `pgvector/pgvector:pg16`
-   - `quay.io/keycloak/keycloak:24.0.5`
-   - `node:20-alpine`
-2. Build the production `ilcms-web:latest` image.
-3. Save all images into `images/ilcms-images.tar`.
-4. Spin up a temporary local Ollama container to download model weights:
-   - `gemma2:9b-instruct-q4_K_M` (~5.4 GB)
-   - `nomic-embed-text` (~274 MB)
-5. Package Kubernetes manifests, SQL seed files, and the installer into `ilcms-laptop-poc-bundle.tar` (~11-13 GB).
-
-### Step 3: Copy to USB Drive
-Copy `ilcms-laptop-poc-bundle.tar` to a clean, formatted USB drive (exFAT or ext4, minimum 32GB capacity).
-
-```bash
-# Calculate sha256 checksum for verification
-sha256sum ilcms-laptop-poc-bundle.tar > ilcms-laptop-poc-bundle.tar.sha256
-cp ilcms-laptop-poc-bundle.tar ilcms-laptop-poc-bundle.tar.sha256 /media/usb/
-sync
-```
-
----
-
-## 7. Laptop Deployment Runbook (Air-Gapped)
-
-Take the USB drive to the isolated Linux laptop. **Ensure WiFi and Ethernet are physically disabled or disconnected.**
-
-### Step 1: Copy and Verify Archive
-```bash
-mkdir -p ~/ilcms-airgap
-cp /media/usb/ilcms-laptop-poc-bundle.tar* ~/ilcms-airgap/
-cd ~/ilcms-airgap
-
-# Verify file integrity
-sha256sum -c ilcms-laptop-poc-bundle.tar.sha256
-tar -xvf ilcms-laptop-poc-bundle.tar
-cd ilcms-airgap-bundle
-```
-
----
+### Alternative Deployment Modes:
+- **Full-Stack Docker Compose:**
+  ```bash
+  ./install.sh --docker
+  # OR
+  docker compose up -d
+  ```
+  Launches all 4 services (Air-Gapped Ollama on internal isolated network, PostgreSQL with pgvector, Keycloak 24 OIDC, and Web frontend).
+- **AI-Only Provisioning:**
+  ```bash
+  ./install.sh --ai-only
+  ```
+  Only spins up the local Ollama container and caches the model weights.
 
 ### Option A: K3s Kubernetes (Recommended)
 

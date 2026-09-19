@@ -3457,10 +3457,10 @@ export default function Dashboard() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", borderBottom: "1px solid #e2e8f0", paddingBottom: "12px" }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: "1.2rem", color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}>
-                  🛡️ Air-Gapped K3s Innviðayfirlit
+                  🛡️ 100% Air-Gapped Gervigreind & Innviðayfirlit
                 </h3>
                 <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
-                  Staðbundið prófunarumhverfi (POC) á Linux fartölvu (20GB RAM, 300GB SSD)
+                  Eins-skrefs uppsetning á fartölvu (<code>./install.sh</code>) • 100% einangruð lögfræðigervigreind án gagnaútflæðis
                 </p>
               </div>
               <button
@@ -3478,41 +3478,58 @@ export default function Dashboard() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              {/* Service 1: Keycloak OIDC */}
+              {/* One-Step Installation Card */}
+              <div style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #cbd5e1" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                  <strong style={{ fontSize: "0.92rem", color: "#0f172a" }}>🚀 Eins-Skrefs Uppsetning (One-Step Local Install)</strong>
+                  <span style={{ fontSize: "0.72rem", background: "#dcfce7", color: "#15803d", padding: "2px 8px", borderRadius: "12px", fontWeight: 600 }}>
+                    ./install.sh
+                  </span>
+                </div>
+                <div style={{ fontSize: "0.8rem", color: "#475569", lineHeight: 1.5 }}>
+                  Uppsetningarkerfið setur upp ILCMS og einangraða staðbundna Ollama gervigreind á fartölvunni í einu skrefi. Öll ónotuð skriftuvirki voru fjarlægð.
+                </div>
+                <div style={{ marginTop: "8px", fontSize: "0.78rem", background: "#ffffff", padding: "8px", borderRadius: "4px", border: "1px solid #e2e8f0" }}>
+                  <div>• <strong>Skipun á fartölvu:</strong> <code>chmod +x install.sh && ./install.sh</code></div>
+                  <div>• <strong>Valmöguleikar:</strong> Styður bæði sjálfstætt Node.js keyrsluumhverfi og Docker Compose (<code>./install.sh --docker</code>).</div>
+                  <div>• <strong>Trúnaðaröryggi:</strong> AI einingin er bundin við staðbundið <code>127.0.0.1</code> lykkjuviðmót með núll útflæði.</div>
+                </div>
+              </div>
+
+              {/* Service 1: Icelandic Gemma 2 LLM - 100% Air-Gapped */}
+              <div style={{ padding: "12px", background: "#eff6ff", borderRadius: "8px", border: "1px solid #bfdbfe" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                  <strong style={{ fontSize: "0.92rem", color: "#1e3a8a" }}>🇮🇸 100% Air-Gapped Lögfræðimállíkan (Ollama)</strong>
+                  <span style={{ fontSize: "0.72rem", background: "#dbeafe", color: "#1d4ed8", padding: "2px 8px", borderRadius: "12px", fontWeight: 600 }}>
+                    100% Staðbundið / Núll Útflæði
+                  </span>
+                </div>
+                <div style={{ fontSize: "0.8rem", color: "#1e40af", lineHeight: 1.5 }}>
+                  Sérhæft íslenskt mállíkan byggt á <strong>Gemma 2 9B Instruct / Miðeind Allra-Handa</strong>. Öll málsskjöl, stefnur, greinargerðir og viðkvæm gögn skjólstæðinga eru unnin 100% án nettengingar eða skýtenginga.
+                </div>
+                <div style={{ marginTop: "8px", fontSize: "0.78rem", background: "#ffffff", padding: "8px", borderRadius: "4px", border: "1px solid #bfdbfe" }}>
+                  <div>• <strong>Mállíkan:</strong> <code>gemma2:9b-instruct-q4_K_M</code> (ca. 5.4 GB staðbundið)</div>
+                  <div>• <strong>Vigurlíkan (Embeddings):</strong> <code>nomic-embed-text</code> (768 víddir fyrir staðbundið pgvector)</div>
+                  <div>• <strong>Trúnaðarskylda:</strong> Uppfyllir 90/2018 (persónuvernd) og siðareglur Lögmannafélags Íslands um lögmannstrúnað.</div>
+                  <div>• <strong>Vinnsluminni:</strong> 6GB – 8GB RAM á fartölvu</div>
+                </div>
+              </div>
+
+              {/* Service 2: Keycloak OIDC */}
               <div style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                   <strong style={{ fontSize: "0.92rem", color: "#0f172a" }}>🔑 Keycloak 24 OIDC Auðkenningarkerfi</strong>
                   <span style={{ fontSize: "0.72rem", background: "#dcfce7", color: "#15803d", padding: "2px 8px", borderRadius: "12px", fontWeight: 600 }}>
-                    K3s Pod: keycloak
+                    OIDC / OAuth2
                   </span>
                 </div>
                 <div style={{ fontSize: "0.8rem", color: "#475569", lineHeight: 1.5 }}>
-                  Fullbúinn Keycloak gámur keyrir beint í K3s <code>ilcms</code> nafnrýminu með eigin gagnagrunni (<code>keycloak_db</code>) í PostgreSQL.
+                  Keycloak þjónusta með eigin gagnagrunni (<code>keycloak_db</code>) í PostgreSQL fyrir hlutverkastýringu (lögmenn, dómarar, kerfisstjórar).
                 </div>
                 <div style={{ marginTop: "8px", fontSize: "0.78rem", background: "#ffffff", padding: "8px", borderRadius: "4px", border: "1px solid #cbd5e1" }}>
                   <div>• <strong>Keycloak Realm:</strong> <code>ilcms</code> | <strong>Client ID:</strong> <code>ilcms-web</code></div>
                   <div>• <strong>Kerfisstjóri:</strong> <code>admin</code> / <code>admin_secret_ilcms</code></div>
                   <div>• <strong>Prófunarnotandi (Lögmaður):</strong> <code>lawyer@ilcms.is</code> / <code>ilcms_password_2026</code></div>
-                  <div>• <strong>Vinnsluminni:</strong> 512MB – 1GB RAM (Heap takmörkuð til að hámarka pláss fyrir málgagn)</div>
-                </div>
-              </div>
-
-              {/* Service 2: Icelandic Gemma 2 LLM */}
-              <div style={{ padding: "12px", background: "#eff6ff", borderRadius: "8px", border: "1px solid #bfdbfe" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                  <strong style={{ fontSize: "0.92rem", color: "#1e3a8a" }}>🇮🇸 Íslenskt Lögfræðimállíkan (Ollama)</strong>
-                  <span style={{ fontSize: "0.72rem", background: "#dbeafe", color: "#1d4ed8", padding: "2px 8px", borderRadius: "12px", fontWeight: 600 }}>
-                    K3s StatefulSet: ollama
-                  </span>
-                </div>
-                <div style={{ fontSize: "0.8rem", color: "#1e40af", lineHeight: 1.5 }}>
-                  Notað er sérhæft íslenskt mállíkan byggt á <strong>Gemma 2 9B Instruct / Miðeind Allra-Handa</strong> (SentencePiece með 256k orðaforða, sérsniðið fyrir íslenskar beygingarmyndir og lagatexta).
-                </div>
-                <div style={{ marginTop: "8px", fontSize: "0.78rem", background: "#ffffff", padding: "8px", borderRadius: "4px", border: "1px solid #bfdbfe" }}>
-                  <div>• <strong>Mállíkan:</strong> <code>gemma2:9b-instruct-q4_K_M</code> (stærð: ca. 5.4 GB)</div>
-                  <div>• <strong>Vigurlíkan (Embeddings):</strong> <code>nomic-embed-text</code> (768 víddir fyrir pgvector)</div>
-                  <div>• <strong>Kerfisfyrirmæli (Modelfile):</strong> Lagt áherslu á einkamálalög, fasteignakaupalög og Hæstaréttardóma.</div>
-                  <div>• <strong>Vinnsluminni:</strong> 6GB – 8GB RAM (StatefulSet með 50GB PVC)</div>
                 </div>
               </div>
 
@@ -3521,28 +3538,23 @@ export default function Dashboard() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                   <strong style={{ fontSize: "0.92rem", color: "#14532d" }}>🗄️ PostgreSQL 16 + pgvector HNSW</strong>
                   <span style={{ fontSize: "0.72rem", background: "#dcfce7", color: "#15803d", padding: "2px 8px", borderRadius: "12px", fontWeight: 600 }}>
-                    K3s StatefulSet: postgres
+                    pgvector
                   </span>
                 </div>
                 <div style={{ fontSize: "0.8rem", color: "#166534", lineHeight: 1.5 }}>
-                  Geymir bæði málaskrárgögn (<code>ilcms_db</code>) og auðkenningargögn Keycloak (<code>keycloak_db</code>). Hraðvirk HNSW vigurleit (vector_cosine_ops) fyrir RAG skjalaleit.
-                </div>
-                <div style={{ marginTop: "8px", fontSize: "0.78rem", background: "#ffffff", padding: "8px", borderRadius: "4px", border: "1px solid #bbf7d0" }}>
-                  <div>• <strong>Gagnasöfn:</strong> <code>ilcms_db</code> (málaskrá og vigrar) og <code>keycloak_db</code> (OIDC)</div>
-                  <div>• <strong>Vinnsluminni:</strong> 1GB – 2GB RAM</div>
+                  Geymir málaskrárgögn (<code>ilcms_db</code>) og auðkenningargögn Keycloak (<code>keycloak_db</code>). Hraðvirk HNSW vigurleit (vector_cosine_ops) fyrir staðbundna RAG skjalaleit.
                 </div>
               </div>
 
               {/* Hardware RAM Budget Summary */}
               <div style={{ padding: "12px", background: "#fafafa", borderRadius: "8px", border: "1px solid #e5e5e5" }}>
-                <strong style={{ fontSize: "0.88rem", color: "#171717" }}>📊 Vinnsluminnisbókhald á 20GB Fartölvu:</strong>
+                <strong style={{ fontSize: "0.88rem", color: "#171717" }}>📊 Vinnsluminnisbókhald á Fartölvu (16GB – 20GB):</strong>
                 <div style={{ marginTop: "6px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", fontSize: "0.78rem", color: "#525252" }}>
-                  <div>• Ollama LLM (Gemma 2 9B): <strong>~7 GB</strong></div>
+                  <div>• Air-Gapped LLM (Gemma 2 9B): <strong>~7 GB</strong></div>
                   <div>• Keycloak OIDC: <strong>~0.8 GB</strong></div>
                   <div>• PostgreSQL & pgvector: <strong>~1.5 GB</strong></div>
                   <div>• ILCMS Vefkerfi: <strong>~0.8 GB</strong></div>
-                  <div>• K3s & Containerd stýring: <strong>~1.0 GB</strong></div>
-                  <div style={{ color: "#16a34a", fontWeight: 600 }}>• Ónotað varasæti / Linux OS: <strong>~8.9 GB</strong></div>
+                  <div>• Stýrikerfi / Varasæti: <strong>~6-8 GB FREE</strong></div>
                 </div>
               </div>
             </div>
