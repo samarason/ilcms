@@ -1676,8 +1676,12 @@ export interface DocxExtractionResult {
   wordCount: number;
 }
 
-export function isDocxBuffer(buffer: Buffer): boolean {
-  if (!buffer || buffer.length < 4) return false;
+export function isDocxBuffer(buffer: Buffer | Uint8Array | string | null | undefined): boolean {
+  if (!buffer) return false;
+  if (typeof buffer === "string") {
+    return buffer.startsWith("PK\x03\x04") || (buffer.length >= 2 && buffer.charCodeAt(0) === 0x50 && buffer.charCodeAt(1) === 0x4b);
+  }
+  if (buffer.length < 4) return false;
   return buffer[0] === 0x50 && buffer[1] === 0x4b;
 }
 
@@ -1741,14 +1745,50 @@ function extractFromRawDocxString(rawStr: string): string {
 export async function extractTextFromDocx(
   input: Buffer | Uint8Array | string
 ): Promise<DocxExtractionResult> {
-  let buffer: Buffer;
+  // Fast path: if input is a plain text string that is not a ZIP/DOCX container
+  if (typeof input === "string") {
+    if (!input.startsWith("PK") && !input.includes("[Content_Types].xml")) {
+      const clean = (extractFromRawDocxString(input) || input)
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .trim();
+      const wordCount = clean ? clean.split(/\s+/).filter(Boolean).length : 0;
+      const pageCount = Math.max(1, Math.ceil(wordCount / 300));
+      return {
+        text: clean,
+        pageCount,
+        wordCount,
+      };
+    }
+  }
 
+  let buffer: Buffer;
   if (typeof input === "string") {
     buffer = Buffer.from(input, "binary");
   } else if (Buffer.isBuffer(input)) {
     buffer = input;
   } else {
     buffer = Buffer.from(input);
+  }
+
+  // Guard: if buffer is not a valid ZIP container (magic bytes 0x50 0x4B)
+  if (!isDocxBuffer(buffer)) {
+    let extractedText = "";
+    try {
+      const rawStr = typeof input === "string" ? input : buffer.toString("utf-8");
+      const rawExtracted = extractFromRawDocxString(rawStr);
+      extractedText = (rawExtracted && rawExtracted.length > 0 ? rawExtracted : rawStr).trim();
+    } catch {
+      extractedText = "";
+    }
+    const text = extractedText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
+    const pageCount = Math.max(1, Math.ceil(wordCount / 300));
+    return {
+      text,
+      pageCount,
+      wordCount,
+    };
   }
 
   let text = "";

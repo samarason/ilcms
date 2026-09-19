@@ -819,7 +819,9 @@ function PrecedentDetailView({
           padding: "12px",
           borderRadius: "6px",
           backgroundColor: "#f0fdf4",
-          border: "1px solid #bbf7d0",
+          borderTop: "1px solid #bbf7d0",
+          borderRight: "1px solid #bbf7d0",
+          borderBottom: "1px solid #bbf7d0",
           borderLeft: "4px solid #16a34a",
         }}
       >
@@ -918,7 +920,9 @@ function StatuteDetailView({
           padding: "14px",
           borderRadius: "6px",
           backgroundColor: "#f8fafc",
-          border: "1px solid #e2e8f0",
+          borderTop: "1px solid #e2e8f0",
+          borderRight: "1px solid #e2e8f0",
+          borderBottom: "1px solid #e2e8f0",
           borderLeft: "4px solid #3b82f6",
         }}
       >

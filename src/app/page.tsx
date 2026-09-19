@@ -1176,7 +1176,21 @@ export default function Dashboard() {
                           ? "#fff8f8"
                           : "#fffdf5"
                         : "#fff",
-                      border: isSelected
+                      borderTop: isSelected
+                        ? "1px solid #3b82f6"
+                        : hasAlert
+                        ? urgency.urgencyLevel === "critical"
+                          ? "1px solid #fecaca"
+                          : "1px solid #fde68a"
+                        : "1px solid #e2e8f0",
+                      borderRight: isSelected
+                        ? "1px solid #3b82f6"
+                        : hasAlert
+                        ? urgency.urgencyLevel === "critical"
+                          ? "1px solid #fecaca"
+                          : "1px solid #fde68a"
+                        : "1px solid #e2e8f0",
+                      borderBottom: isSelected
                         ? "1px solid #3b82f6"
                         : hasAlert
                         ? urgency.urgencyLevel === "critical"
@@ -1298,7 +1312,9 @@ export default function Dashboard() {
                     id={`active-case-urgent-alert-${activeCase.id}`}
                     style={{
                       background: isCrit ? "#fef2f2" : "#fffbeb",
-                      border: isCrit ? "1px solid #f87171" : "1px solid #fcd34d",
+                      borderTop: isCrit ? "1px solid #f87171" : "1px solid #fcd34d",
+                      borderRight: isCrit ? "1px solid #f87171" : "1px solid #fcd34d",
+                      borderBottom: isCrit ? "1px solid #f87171" : "1px solid #fcd34d",
                       borderLeft: isCrit ? "5px solid #dc2626" : "5px solid #d97706",
                       borderRadius: "6px",
                       padding: "12px 16px",
@@ -1490,7 +1506,9 @@ export default function Dashboard() {
                     padding: "8px 14px",
                     background: activeTab === "docs" ? "#eff6ff" : "transparent",
                     color: activeTab === "docs" ? "#2563eb" : "#64748b",
-                    border: "none",
+                    borderTop: "none",
+                    borderLeft: "none",
+                    borderRight: "none",
                     borderBottom: activeTab === "docs" ? "2px solid #2563eb" : "2px solid transparent",
                     fontWeight: activeTab === "docs" ? 600 : 500,
                     cursor: "pointer",
@@ -1509,7 +1527,9 @@ export default function Dashboard() {
                     padding: "8px 14px",
                     background: activeTab === "deadlines" ? "#eff6ff" : "transparent",
                     color: activeTab === "deadlines" ? "#2563eb" : "#64748b",
-                    border: "none",
+                    borderTop: "none",
+                    borderLeft: "none",
+                    borderRight: "none",
                     borderBottom: activeTab === "deadlines" ? "2px solid #2563eb" : "2px solid transparent",
                     fontWeight: activeTab === "deadlines" ? 600 : 500,
                     cursor: "pointer",
@@ -1560,7 +1580,9 @@ export default function Dashboard() {
                     padding: "8px 14px",
                     background: activeTab === "bundle" ? "#eff6ff" : "transparent",
                     color: activeTab === "bundle" ? "#2563eb" : "#64748b",
-                    border: "none",
+                    borderTop: "none",
+                    borderLeft: "none",
+                    borderRight: "none",
                     borderBottom: activeTab === "bundle" ? "2px solid #2563eb" : "2px solid transparent",
                     fontWeight: activeTab === "bundle" ? 600 : 500,
                     cursor: "pointer",
@@ -1578,7 +1600,9 @@ export default function Dashboard() {
                     padding: "8px 14px",
                     background: activeTab === "law" ? "#eff6ff" : "transparent",
                     color: activeTab === "law" ? "#2563eb" : "#64748b",
-                    border: "none",
+                    borderTop: "none",
+                    borderLeft: "none",
+                    borderRight: "none",
                     borderBottom: activeTab === "law" ? "2px solid #2563eb" : "2px solid transparent",
                     fontWeight: activeTab === "law" ? 600 : 500,
                     cursor: "pointer",
@@ -1597,7 +1621,9 @@ export default function Dashboard() {
                     padding: "8px 14px",
                     background: activeTab === "drafting" ? "#eff6ff" : "transparent",
                     color: activeTab === "drafting" ? "#2563eb" : "#64748b",
-                    border: "none",
+                    borderTop: "none",
+                    borderLeft: "none",
+                    borderRight: "none",
                     borderBottom: activeTab === "drafting" ? "2px solid #2563eb" : "2px solid transparent",
                     fontWeight: activeTab === "drafting" ? 600 : 500,
                     cursor: "pointer",
@@ -1627,7 +1653,9 @@ export default function Dashboard() {
                     padding: "8px 14px",
                     background: activeTab === "billing" ? "#eff6ff" : "transparent",
                     color: activeTab === "billing" ? "#2563eb" : "#64748b",
-                    border: "none",
+                    borderTop: "none",
+                    borderLeft: "none",
+                    borderRight: "none",
                     borderBottom: activeTab === "billing" ? "2px solid #2563eb" : "2px solid transparent",
                     fontWeight: activeTab === "billing" ? 600 : 500,
                     cursor: "pointer",
@@ -2324,7 +2352,9 @@ export default function Dashboard() {
                                 padding: "12px 14px",
                                 borderRadius: "6px",
                                 background: isCrit ? "#fef2f2" : isUnder48 ? "#fffbeb" : "#f8fafc",
-                                border: isCrit ? "1px solid #fca5a5" : isUnder48 ? "1px solid #fde68a" : "1px solid #e2e8f0",
+                                borderTop: isCrit ? "1px solid #fca5a5" : isUnder48 ? "1px solid #fde68a" : "1px solid #e2e8f0",
+                                borderRight: isCrit ? "1px solid #fca5a5" : isUnder48 ? "1px solid #fde68a" : "1px solid #e2e8f0",
+                                borderBottom: isCrit ? "1px solid #fca5a5" : isUnder48 ? "1px solid #fde68a" : "1px solid #e2e8f0",
                                 borderLeft: isCrit ? "4px solid #dc2626" : isUnder48 ? "4px solid #d97706" : "1px solid #e2e8f0",
                                 display: "flex",
                                 justifyContent: "space-between",

@@ -28,7 +28,7 @@ export async function GET(
       doc.content &&
       (doc.content.startsWith("PK") ||
         doc.content.includes("[Content_Types].xml") ||
-        doc.title?.toLowerCase().endsWith(".docx"))
+        (doc.title?.toLowerCase().endsWith(".docx") && isDocxBuffer(doc.content)))
     ) {
       try {
         const extraction = await extractTextFromDocx(doc.content);
@@ -42,6 +42,8 @@ export async function GET(
       } catch (err) {
         console.warn("Could not auto-extract legacy raw DOCX doc:", doc.id, err);
       }
+    } else if (doc.title?.toLowerCase().endsWith(".docx")) {
+      doc.is_docx = true;
     }
 
     if (!doc.version) {
