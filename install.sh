@@ -16,6 +16,9 @@ cd "${SCRIPT_DIR}"
 MODE="auto"
 if [ $# -gt 0 ]; then
   case "$1" in
+    --k3s|k3s)
+      MODE="k3s"
+      ;;
     --docker)
       MODE="docker"
       ;;
@@ -32,6 +35,7 @@ if [ $# -gt 0 ]; then
       echo ""
       echo "Options:"
       echo "  (none)      Default one-step installation (detects environment and starts stack)"
+      echo "  --k3s       One-step launch using K3s Kubernetes (declarative deploy/k8s manifests)"
       echo "  --docker    One-step launch using Docker Compose (all services + air-gapped AI)"
       echo "  --local     One-step launch with local Node.js + isolated Docker Ollama AI"
       echo "  --ai-only   Only configure and pull the 100% air-gapped Icelandic legal model"
@@ -120,53 +124,59 @@ echo "Privacy Guarantee: Legal briefs, pleadings, and client data never leave th
 
 OLLAMA_READY=false
 
-# Check if an existing Ollama service is already running on localhost:11434
-if curl -s -m 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-  echo "✓ Local Ollama service is already active on http://127.0.0.1:11434."
-  OLLAMA_READY=true
-fi
+if [ "$MODE" = "k3s" ]; then
+  echo "Note: In K3s mode, the Air-Gapped Ollama service is deployed as a StatefulSet inside Kubernetes."
+  echo "      Manifest: deploy/k8s/ollama.yaml (with isolated cluster networking and persistent volume)."
+  OLLAMA_READY=false
+else
+  # Check if an existing Ollama service is already running on localhost:11434
+  if curl -s -m 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+    echo "✓ Local Ollama service is already active on http://127.0.0.1:11434."
+    OLLAMA_READY=true
+  fi
 
-if [ "$OLLAMA_READY" = false ]; then
-  if command -v docker >/dev/null 2>&1; then
-    echo "Starting containerized Air-Gapped Ollama service via Docker..."
-    echo "Enforcing loopback-only binding (127.0.0.1:11434) to guarantee zero network egress..."
+  if [ "$OLLAMA_READY" = false ]; then
+    if command -v docker >/dev/null 2>&1; then
+      echo "Starting containerized Air-Gapped Ollama service via Docker..."
+      echo "Enforcing loopback-only binding (127.0.0.1:11434) to guarantee zero network egress..."
 
-    docker volume create ilcms_ollama_data >/dev/null 2>&1 || true
+      docker volume create ilcms_ollama_data >/dev/null 2>&1 || true
 
-    # Stop any stale container if exists
-    docker rm -f ilcms-ollama-airgap >/dev/null 2>&1 || true
+      # Stop any stale container if exists
+      docker rm -f ilcms-ollama-airgap >/dev/null 2>&1 || true
 
-    # Run Ollama container strictly bound to local loopback 127.0.0.1
-    docker run -d \
-      --name ilcms-ollama-airgap \
-      --restart unless-stopped \
-      -p 127.0.0.1:11434:11434 \
-      -v ilcms_ollama_data:/root/.ollama \
-      -e OLLAMA_ORIGINS="*" \
-      -e OLLAMA_KEEP_ALIVE="24h" \
-      ollama/ollama:0.5.7
+      # Run Ollama container strictly bound to local loopback 127.0.0.1
+      docker run -d \
+        --name ilcms-ollama-airgap \
+        --restart unless-stopped \
+        -p 127.0.0.1:11434:11434 \
+        -v ilcms_ollama_data:/root/.ollama \
+        -e OLLAMA_ORIGINS="*" \
+        -e OLLAMA_KEEP_ALIVE="24h" \
+        ollama/ollama:0.5.7
 
-    echo "Waiting for Air-Gapped Ollama container to start..."
-    for i in {1..30}; do
+      echo "Waiting for Air-Gapped Ollama container to start..."
+      for i in {1..30}; do
+        if curl -s -m 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+          echo "✓ Air-Gapped Ollama container is up and responsive."
+          OLLAMA_READY=true
+          break
+        fi
+        sleep 1
+      done
+    elif command -v ollama >/dev/null 2>&1; then
+      echo "Starting native Ollama daemon in background..."
+      nohup ollama serve >/tmp/ollama-airgap.log 2>&1 &
+      sleep 3
       if curl -s -m 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-        echo "✓ Air-Gapped Ollama container is up and responsive."
+        echo "✓ Native Ollama service started successfully."
         OLLAMA_READY=true
-        break
       fi
-      sleep 1
-    done
-  elif command -v ollama >/dev/null 2>&1; then
-    echo "Starting native Ollama daemon in background..."
-    nohup ollama serve >/tmp/ollama-airgap.log 2>&1 &
-    sleep 3
-    if curl -s -m 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-      echo "✓ Native Ollama service started successfully."
-      OLLAMA_READY=true
+    else
+      echo "⚠️  Neither Docker nor native Ollama was detected."
+      echo "   To enable local Air-Gapped AI, please install Docker or Ollama (https://ollama.com)."
+      echo "   The application will fall back to the local deterministic legal rules engine."
     fi
-  else
-    echo "⚠️  Neither Docker nor native Ollama was detected."
-    echo "   To enable local Air-Gapped AI, please install Docker or Ollama (https://ollama.com)."
-    echo "   The application will fall back to the local deterministic legal rules engine."
   fi
 fi
 
@@ -215,7 +225,84 @@ fi
 echo ""
 echo "=== [5/5] Finalizing Application Installation ==="
 
-if [ "$MODE" = "docker" ]; then
+if [ "$MODE" = "k3s" ]; then
+  echo "Launching full stack on K3s Kubernetes using declarative manifests (deploy/k8s)..."
+
+  KUBECTL_CMD=""
+  if command -v kubectl >/dev/null 2>&1; then
+    KUBECTL_CMD="kubectl"
+  elif command -v k3s >/dev/null 2>&1; then
+    KUBECTL_CMD="k3s kubectl"
+  else
+    echo "⚠️  Neither 'kubectl' nor 'k3s' was found on your system."
+    echo "   To install K3s on Linux, run:"
+    echo "     curl -sfL https://get.k3s.io | sh -s - --disable servicelb --write-kubeconfig-mode 644"
+    echo "   Then re-run: ./install.sh --k3s"
+    exit 1
+  fi
+
+  # Auto-detect K3s kubeconfig if not set
+  if [ -z "${KUBECONFIG:-}" ] && [ -f "/etc/rancher/k3s/k3s.yaml" ] && [ -r "/etc/rancher/k3s/k3s.yaml" ]; then
+    export KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
+  fi
+
+  echo "Verifying K3s cluster connectivity..."
+  if ! $KUBECTL_CMD get nodes >/dev/null 2>&1; then
+    echo "⚠️  Cannot connect to Kubernetes cluster."
+    if [ -f "/etc/rancher/k3s/k3s.yaml" ] && [ ! -r "/etc/rancher/k3s/k3s.yaml" ]; then
+      echo "   Hint: /etc/rancher/k3s/k3s.yaml is not readable by current user. Run: 'sudo chmod 644 /etc/rancher/k3s/k3s.yaml'."
+    fi
+    exit 1
+  fi
+  echo "✓ Kubernetes cluster is reachable."
+
+  # Import offline images into K3s containerd namespace if available
+  if [ -f "./images/ilcms-images.tar" ]; then
+    echo "Importing offline images from ./images/ilcms-images.tar into K3s containerd..."
+    if command -v k3s >/dev/null 2>&1; then
+      k3s ctr images import ./images/ilcms-images.tar 2>/dev/null || sudo k3s ctr images import ./images/ilcms-images.tar 2>/dev/null || true
+    fi
+  elif command -v docker >/dev/null 2>&1 && docker image inspect ilcms-web:latest >/dev/null 2>&1; then
+    echo "Streaming local 'ilcms-web:latest' image into K3s containerd..."
+    if command -v k3s >/dev/null 2>&1; then
+      docker save ilcms-web:latest | (k3s ctr images import - 2>/dev/null || sudo k3s ctr images import - 2>/dev/null || true)
+    fi
+  fi
+
+  # Apply Kubernetes manifests
+  echo "Applying K8s manifests from deploy/k8s..."
+  if [ -f "deploy/k8s/kustomization.yaml" ]; then
+    $KUBECTL_CMD apply -k deploy/k8s/
+  else
+    $KUBECTL_CMD apply -f deploy/k8s/
+  fi
+
+  echo ""
+  echo "✓ Manifests applied successfully in 'ilcms' namespace."
+  echo ""
+  echo "Current Pod Status:"
+  $KUBECTL_CMD get pods -n ilcms || true
+
+  echo ""
+  echo "================================================================================"
+  echo " 🎉 SUCCESS: ILCMS K3s KUBERNETES DEPLOYMENT COMPLETE!"
+  echo "================================================================================"
+  echo ""
+  echo "  • Web Application:     http://ilcms.local (via Traefik Ingress) or port-forward"
+  echo "  • Keycloak Auth:       http://auth.ilcms.local"
+  echo "  • Air-Gapped AI:       ollama.ilcms.svc.cluster.local:11434 (Internal Cluster Only)"
+  echo "  • Active Namespace:    ilcms"
+  echo ""
+  echo "  Useful Commands:"
+  echo "    $KUBECTL_CMD get pods -n ilcms -w                            (Watch pod rollout)"
+  echo "    $KUBECTL_CMD port-forward svc/ilcms-web -n ilcms 3000:3000    (Direct localhost access)"
+  echo ""
+  echo "  DNS Setup (for Traefik Ingress):"
+  echo "    Add to /etc/hosts: 127.0.0.1 ilcms.local auth.ilcms.local"
+  echo ""
+  echo "================================================================================"
+  exit 0
+elif [ "$MODE" = "docker" ]; then
   echo "Launching full stack via Docker Compose with isolated AI network..."
   docker compose up -d
   echo ""

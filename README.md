@@ -73,6 +73,7 @@ chmod +x install.sh
 ### Installation Modes
 ```bash
 ./install.sh          # Default: checks RAM, isolates local AI, installs packages and starts app
+./install.sh --k3s    # Declarative deployment onto local K3s Kubernetes cluster (deploy/k8s)
 ./install.sh --docker # Full-stack deployment via Docker Compose with isolated AI bridge
 ./install.sh --ai-only # Configures and caches only the 100% air-gapped Icelandic AI model
 ```

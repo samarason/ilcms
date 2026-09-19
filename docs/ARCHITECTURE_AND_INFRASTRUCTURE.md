@@ -77,10 +77,15 @@ The **Icelandic Legal Case Management System (ILCMS)** is designed to operate se
 
 ## 3. Installation & Run Modes
 
-- **Turnkey One-Step Installer:**
+- **Turnkey One-Step Installer (Auto-detect):**
   ```bash
   chmod +x install.sh
   ./install.sh
+  ```
+- **K3s Kubernetes Deployment (Declarative Manifests):**
+  ```bash
+  ./install.sh --k3s
+  # Applies deploy/k8s/ manifests to local K3s cluster in 'ilcms' namespace
   ```
 - **Docker Compose Stack:**
   ```bash

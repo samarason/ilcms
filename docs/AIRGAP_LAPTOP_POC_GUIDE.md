@@ -216,10 +216,10 @@ kubectl get nodes
 #### 2. Run Automated Laptop Installer
 ```bash
 chmod +x install.sh
-./install.sh k3s
+./install.sh --k3s
 ```
 
-*What `install.sh k3s` executes under the hood:*
+*What `install.sh --k3s` executes under the hood:*
 1. Imports container images directly into the K3s containerd socket:
    ```bash
    sudo k3s ctr images import ./images/ilcms-images.tar

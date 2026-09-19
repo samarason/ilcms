@@ -59,8 +59,10 @@ OLLAMA_HOST="127.0.0.1:11434"
 OLLAMA_URL="http://${OLLAMA_HOST}"
 
 # Check 1.1: Local Service Responsiveness
+OLLAMA_UP=false
 if curl -s -m 3 "${OLLAMA_URL}/api/tags" >/dev/null 2>&1; then
   log_pass "Ollama HTTP API is responsive on ${OLLAMA_URL}"
+  OLLAMA_UP=true
   
   # Check 1.2: Check Cached Models
   TAGS_JSON=$(curl -s -m 3 "${OLLAMA_URL}/api/tags" 2>/dev/null || echo "{}")
@@ -97,6 +99,9 @@ if curl -s -m 3 "${OLLAMA_URL}/api/tags" >/dev/null 2>&1; then
       log_warn "Inference test timed out or model still warming up into memory"
     fi
   fi
+elif command -v kubectl >/dev/null 2>&1 && kubectl get pods -n ilcms -l app=ollama 2>/dev/null | grep -q "Running"; then
+  log_pass "Ollama AI pod is running inside K3s ('ilcms' namespace)"
+  OLLAMA_UP=true
 else
   log_fail "Ollama HTTP API is not reachable on ${OLLAMA_URL}"
 fi
