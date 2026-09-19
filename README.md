@@ -81,6 +81,14 @@ chmod +x install.sh
 - **Air-Gapped AI Subsystem:** `http://127.0.0.1:11434` (Strict loopback / zero internet egress)
 - **Test Credentials:** `lawyer@ilcms.is` / `ilcms_password_2026`
 
+### Verify Air-Gap & Component Health
+After running `./install.sh`, verify that all services and air-gap network boundaries are operating locally with zero outbound egress:
+
+```bash
+chmod +x verify-airgap.sh
+./verify-airgap.sh
+```
+
 ---
 
 ## Visual Tour of the System (High-Resolution Screenshots)
