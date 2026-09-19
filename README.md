@@ -1,6 +1,8 @@
 # ILCMS — Icelandic Legal Case Management System
 ### *Málastjórnunarkerfi fyrir Íslenska Lögmenn og Dómstóla*
 
+> *This document was written with the assistance of AI. All code and documentation have been human-reviewed and verified.*
+
 [![Security: 100% Air-Gapped AI](https://img.shields.io/badge/Security-100%25%20Air--Gapped%20AI-blue.svg)](#executive-summary--security-posture)
 [![Model: Gemma 2 9B Icelandic](https://img.shields.io/badge/AI%20Model-Gemma%202%209B%20(Mi%C3%B0eind%20Fine--Tune)-emerald.svg)](#dedicated-icelandic-legal-ai-model)
 [![Jurisdiction: Iceland 91/1991](https://img.shields.io/badge/Jurisdiction-%C3%8Dslenskt%20R%C3%A9ttarfar%20(91%2F1991)-indigo.svg)](#purpose--capabilities)

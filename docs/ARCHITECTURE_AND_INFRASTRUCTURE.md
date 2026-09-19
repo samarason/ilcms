@@ -1,5 +1,7 @@
 # ILCMS - Technical Architecture & Infrastructure Specification
 
+> *This document was written with the assistance of AI. All code and documentation have been human-reviewed and verified.*
+
 **Document Identifier:** `ILCMS-DOC-002`  
 **Version:** `2.0.0-AIRGAP-LOCAL`  
 **Status:** Approved Architecture  

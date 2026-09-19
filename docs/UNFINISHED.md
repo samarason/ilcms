@@ -1,5 +1,7 @@
 # ILCMS — Ókláruð Verkefni & Framtíðarviðbætur (Unfinished & Roadmap)
 
+> *This document was written with the assistance of AI. All code and documentation have been human-reviewed and verified.*
+
 Þetta skjal tekur saman þá þætti sem eru ókláraðir eða þarfnast frekari útfærslu í **ILCMS (Icelandic Legal Case Management System)**, sem og lista yfir mögulegar viðbætur og endurbætur sem geta aukið virði kerfisins fyrir íslenskar lögfræðistofur og dómstóla.
 
 ---

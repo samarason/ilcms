@@ -1,5 +1,7 @@
 # ILCMS Air-Gapped AI & Local Laptop Deployment Guide
 
+> *This document was written with the assistance of AI. All code and documentation have been human-reviewed and verified.*
+
 **Target Environment:** Single-Laptop Linux/macOS/WSL Host (ca. 16–20GB RAM, 300GB NVMe/SSD)  
 **Security Architecture:** **Only the AI part of the system needs to be 100% Air-Gapped.**  
 **Installation Method:** One-Step Turnkey Installer (`./install.sh`)  

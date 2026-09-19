@@ -1,5 +1,7 @@
 # ILCMS - Functional Requirements & Design Document
 
+> *This document was written with the assistance of AI. All code and documentation have been human-reviewed and verified.*
+
 **Document Identifier:** `ILCMS-DOC-001`  
 **Version:** `2.0.0-COMPREHENSIVE`  
 **Status:** Approved Design Document  

@@ -1,5 +1,7 @@
 # ILCMS Notendahandbók (User Guide)
 
+> *This document was written with the assistance of AI. All code and documentation have been human-reviewed and verified.*
+
 Velkomin(n) í **ILCMS (Icelandic Legal Case Management System)** — sérhæft málaskrár- og réttarfarskerfi hannað fyrir íslenska lögmenn, lögfræðistofur og dómstóla.
 
 Kerfið er sérsniðið að kröfum **laga um meðferð einkamála nr. 91/1991**, **reglum dómstólasýslunnar um málsgagnasöfn** og ströngum trúnaðarkröfum lögmannastéttarinnar (**100% Air-Gapped AI**).
