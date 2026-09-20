@@ -336,6 +336,58 @@ Below are high-resolution screenshots illustrating the end-to-end legal workflow
 - **Live K3s Cluster Monitor (`K3sResourceMonitorWidget`):** Live telemetry for CPU load percentage, RAM usage (active vs limits vs free buffer), and disk volume occupancy reading real host and cgroup counters from `/api/v1/admin/cluster-metrics`.
 - **Example Documents Engine (`/examples`):** Instant repository inspection and case import modal (`ExampleDocsPickerModal`) allowing attorneys to test the full litigation lifecycle with complete, authentic Icelandic evidence packets.
 
+#### Figure 10.1: System Administration Dashboard & Live K3s Cluster Monitor
+*Comprehensive cluster telemetry displaying CPU core load, memory allocation (AI model, Postgres, exhibits, K3s buffer), NVMe storage occupancy, and individual microservice statuses.*
+<br/>
+<a href="assets/images/010.01-ilcms.png" target="_blank" title="Click to view full-resolution image (2424x1492)">
+  <img src="assets/images/010.01-ilcms.png" alt="System Administration Dashboard and Live K3s Cluster Monitor" width="100%" />
+</a>
+
+<br/>
+
+#### Figure 10.2: Granular Kubernetes Pod Resource Telemetry
+*Detailed breakdown of Kubernetes pods across all namespaces (default, database, auth, ai, kube-system) with exact millicore CPU, RAM usage, and attached persistent storage (PVC).*
+<br/>
+<a href="assets/images/010.02-ilcms.png" target="_blank" title="Click to view full-resolution image (2428x1502)">
+  <img src="assets/images/010.02-ilcms.png" alt="Granular Kubernetes Pod Resource Telemetry" width="100%" />
+</a>
+
+<br/>
+
+#### Figure 10.3: K3s Node Health & Kubelet Pressure Diagnostics
+*Node health indicators verifying Kubelet status (Ready), memory pressure (False), disk pressure (False), process ID thresholds, and local loopback isolation.*
+<br/>
+<a href="assets/images/010.03-ilcms.png" target="_blank" title="Click to view full-resolution image (2426x1452)">
+  <img src="assets/images/010.03-ilcms.png" alt="K3s Node Health and Kubelet Pressure Diagnostics" width="100%" />
+</a>
+
+<br/>
+
+#### Figure 10.4: Keycloak 24 IAM & Role-Based Access Control (RBAC)
+*User administration and role management interface displaying advocates, judges, paralegals, and administrators with multi-factor authentication (MFA) and granular permissions.*
+<br/>
+<a href="assets/images/010.04-ilcms.png" target="_blank" title="Click to view full-resolution image (2420x1200)">
+  <img src="assets/images/010.04-ilcms.png" alt="Keycloak 24 IAM and Role-Based Access Control" width="100%" />
+</a>
+
+<br/>
+
+#### Figure 10.5: Zero-Egress Security & Litigation Audit Log
+*Forensic litigation audit trail logging user actions, PDF court bundle exports, on-device AI queries (0 bytes sent outside), and blocked unauthorized external connection attempts.*
+<br/>
+<a href="assets/images/010.05-ilcms.png" target="_blank" title="Click to view full-resolution image (2426x1180)">
+  <img src="assets/images/010.05-ilcms.png" alt="Zero-Egress Security and Litigation Audit Log" width="100%" />
+</a>
+
+<br/>
+
+#### Figure 10.6: Real-Time Microservice Logs & Air-Gap Egress Firewall Stream
+*Live system log streaming console across all microservices (Ollama, PostgreSQL pgvector, Keycloak, Web) verifying zero outbound WAN egress and HNSW vector performance.*
+<br/>
+<a href="assets/images/010.06-ilcms.png" target="_blank" title="Click to view full-resolution image (2422x1000)">
+  <img src="assets/images/010.06-ilcms.png" alt="Real-Time Microservice Logs and Air-Gap Egress Firewall Stream" width="100%" />
+</a>
+
 ---
 
 ## Technology Stack
