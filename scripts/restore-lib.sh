@@ -50,7 +50,7 @@ export const DEMO_USERS: Record<string, User> = {
   LAWYER: {
     id: "usr-lawyer-01",
     name: "Guðrún Sigurðardóttir hrl.",
-    email: "gudrun@lex.is",
+    email: "gudrun@ilcms.is",
     role: "LAWYER",
   },
   JUDGE: {
@@ -62,7 +62,7 @@ export const DEMO_USERS: Record<string, User> = {
   PARALEGAL: {
     id: "usr-paralegal-01",
     name: "Ásta Einarsdóttir lögfræðinemi",
-    email: "asta@lex.is",
+    email: "asta@ilcms.is",
     role: "PARALEGAL",
   },
   ADMIN: {

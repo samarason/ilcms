@@ -283,7 +283,7 @@ export function LoginView() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="t.d. gudrun@lex.is eða jon.thordarson@heradsdomstolar.is"
+                placeholder="t.d. gudrun@ilcms.is eða jon.thordarson@heradsdomstolar.is"
                 style={{
                   width: "100%",
                   padding: "8px 12px",

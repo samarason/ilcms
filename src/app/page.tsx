@@ -6,6 +6,7 @@ import { LoginView } from "@/components/LoginView";
 import { BillingManagementTab } from "@/components/BillingManagementTab";
 import { LegalCompareModal } from "@/components/LegalCompareModal";
 import { LegalDraftingView } from "@/components/LegalDraftingView";
+import { AdminConsoleModal } from "@/components/AdminConsoleModal";
 import { PRE_SEEDED_STATUTES } from "@/lib/legal-knowledge";
 import { evaluateCaseDeadlineUrgency, getDeadlineHoursRemaining } from "@/lib/deadline-urgency";
 
@@ -31,6 +32,7 @@ export default function Dashboard() {
 
   const [systemStatus, setSystemStatus] = useState<any>(null);
   const [showInfraModal, setShowInfraModal] = useState(false);
+  const [showAdminConsoleModal, setShowAdminConsoleModal] = useState(false);
 
   const [chatMessages, setChatMessages] = useState<any[]>([
     {
@@ -897,6 +899,31 @@ export default function Dashboard() {
               <option value="admin">🛡️ Kerfisstjóri ILCMS (Kerfisstjóri)</option>
             </select>
           </div>
+          {/* Kerfisstjóraviðmót - Aðeins sýnilegt fyrir notanda admin@ilcms.is */}
+          {(user?.email === "admin@ilcms.is" || user?.role === "ADMIN") && (
+            <button
+              id="btn-admin-console"
+              onClick={() => setShowAdminConsoleModal(true)}
+              style={{
+                padding: "4px 12px",
+                background: "linear-gradient(135deg, #1e3a8a, #0284c7)",
+                color: "#ffffff",
+                border: "1px solid #38bdf8",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "0.76rem",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                boxShadow: "0 0 10px rgba(56, 189, 248, 0.3)",
+              }}
+              title="Opna Kerfisstjóraviðmót (Aðeins fyrir notanda admin@ilcms.is)"
+            >
+              <span>🛡️</span>
+              <span>Kerfisstjórn</span>
+            </button>
+          )}
           <button
             onClick={() => setShowInfraModal(true)}
             style={{
@@ -3579,6 +3606,13 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Kerfisstjóraviðmót (Admin Console Modal) */}
+      <AdminConsoleModal
+        isOpen={showAdminConsoleModal}
+        onClose={() => setShowAdminConsoleModal(false)}
+        currentUser={user}
+      />
 
       {/* ATHUGASEMDIR (DOCUMENT NOTES) MODAL */}
       {activeNoteDoc && (
