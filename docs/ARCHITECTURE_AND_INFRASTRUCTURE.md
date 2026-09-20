@@ -54,6 +54,8 @@ The **Icelandic Legal Case Management System (ILCMS)** is designed to operate se
   - Court Bundle Generator (*Málsgagnasafn skv. reglum dómstólasýslunnar nr. 1/2020*).
   - Legal Drafting Studio (*Stefna, Greinargerð, Kröfugerð*) with version diff.
   - Billable Time & Cost Accounting (*130. gr. eml. málskostnaðarreiknivél*).
+  - Example Legal Documents Repository & Import Service (`/api/v1/examples`).
+  - System Administration & Cluster Monitoring API (`/api/v1/admin/cluster-metrics`).
 
 ### 2.2 100% Air-Gapped AI Subsystem (`ollama`)
 - **Engine:** Ollama 0.5.7 container or local daemon.
@@ -72,6 +74,27 @@ The **Icelandic Legal Case Management System (ILCMS)** is designed to operate se
 - **Service:** PostgreSQL 16 Alpine with `pgvector` extension.
 - **Database:** `ilcms_db` for cases, filings, exhibits, time logs, and vector embeddings.
 - **Index:** HNSW cosine similarity index for sub-millisecond retrieval of legal citations.
+
+### 2.5 Cluster Metrics & Telemetry Subsystem (`/api/v1/admin/cluster-metrics`)
+- **Endpoint:** `GET /api/v1/admin/cluster-metrics`.
+- **Data Sources:** Linux kernel `/sys/fs/cgroup`, `/proc/stat`, `/proc/meminfo`, Node.js `os` module, and disk stats (`df`).
+- **Telemetry Exposed:**
+  - CPU: Active utilization %, core topology, and load averages (1m, 5m, 15m).
+  - Memory: Container resident set size (RSS), heap allocated, Ollama model cache footprint, and host system page cache headroom.
+  - Disk: Root filesystem and persistent volume claim (PVC) occupancy.
+  - Pod Health: Real-time container state (`STAÐA: Ready`, uptime, node IP).
+
+### 2.6 Trial Examples Subsystem (`/examples` & `/api/v1/examples`)
+- **Directory Structure:** Top-level `/examples/` mapped to `/public/examples/` for static web asset retrieval.
+- **Manifest File:** `manifest.json` indexing file titles, categories, authors, page counts, and summary abstracts.
+- **Available Templates:**
+  - `01-serfraediskyrsla-fasteignamat.txt`: Expert surveyor inspection on building moisture & facade defects (kr. 35.278.000).
+  - `02-samningur-verksamningur.txt`: Construction agreement conforming to ÍST 30:2012.
+  - `03-stefna-heradsdomur.txt`: District Court writ of summons with formal statutory claims.
+  - `04-tolvupostar-samskipti.txt`: Attorney, contractor, and client communications.
+  - `05-greidsluaskorun-riftun.txt`: Payment demand and formal contract cancellation notice.
+  - `06-domkvaedning-matsmanna.txt`: Petition for judicial surveyor appointment skv. XII. kafla eml.
+- **Import Modes:** Insertion into an existing matter (`insert_to_case`) or automated provisioning of a new trial matter (`create_new_case`).
 
 ---
 

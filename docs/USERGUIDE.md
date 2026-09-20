@@ -19,7 +19,8 @@ Kerfið er sérsniðið að kröfum **laga um meðferð einkamála nr. 91/1991**
 7. [Rafræn Lögmannsstofa & Skjalagerð (Legal Drafting)](#7-rafræn-lögmannsstofa--skjalagerð-legal-drafting)
 8. [Tímar & Málskostnaður skv. 130. gr. eml. (Cost Tracker)](#8-tímar--málskostnaður-skv-130-gr-eml-cost-tracker)
 9. [100% Air-Gapped Lögfræðiaðstoðarmaður (AI Assistant)](#9-100-air-gapped-lögfræðiaðstoðarmaður-ai-assistant)
-10. [Flýtilyklar & Góð Ráð](#10-flýtilyklar--góð-ráð)
+10. [Kerfisstjórn ILCMS & Auðlindavöktun K3s (Admin Console & Cluster Metrics)](#10-kerfisstjórn-ilcms--auðlindavöktun-k3s-admin-console--cluster-metrics)
+11. [Flýtilyklar & Góð Ráð](#11-flýtilyklar--góð-ráð)
 
 ---
 
@@ -89,6 +90,24 @@ Fyrir hvert mál birtast öll skjöl flokkuð sem:
 - Styður **PDF** og **DOCX** (Word) skjöl.
 - Sjálfvirk textagreining (*text extraction*) dregur út meginmál fyrir leit og gervigreind.
 - Kerfið reiknar sjálfkrafa orðafjölda og blaðsíðufjölda.
+
+### Sækja dæmaskjöl úr dæmasafni (`/examples`)
+ILCMS inniheldur innbyggt dæmasafn með raunverulegum íslenskum dóms- og málsgögnum í möppunni `/examples`. Þessi gögn henta sérstaklega vel við prófanir og kennslu:
+1. **Opna dæmasafn:**
+   - Smellið á **„📁 Dæmaskjöl“** í vinstri hliðarstiku við hliðina á *„+ Nýtt mál“*, eða
+   - Smellið á **„📁 Sækja dæmaskjöl (/examples)“** í skjalaglugga virka málsins, eða
+   - Notið flýtihnappinn neðst í glugganum *„Stofna nýtt mál“*.
+2. **Innihald dæmasafnsins:**
+   - **Sérfræðiskýrsla og matsgerð dómkvaddra matsmanna** (`01-serfraediskyrsla-fasteignamat.txt`): Úttekt byggingarverkfræðings og húsasmíðameistara á göllum á utanhússklæðningu, einangrun og rakaskemmdum með ítarlegu kostnaðarmati (kr. 35.278.000).
+   - **Verksamningur um endurbætur utanhúss** (`02-samningur-verksamningur.txt`): Fullbúinn verksamningur skv. ÍST 30:2012 að fjárhæð kr. 64.800.000 með ákvæðum um dagsektir og riftun.
+   - **Stefna í einkamáli fyrir Héraðsdómi Reykjavíkur** (`03-stefna-heradsdomur.txt`): Formleg stefna með dómkröfum um skaðabætur, dagsektir, dráttarvexti og málskostnað.
+   - **Tölvupóstar og samskiptasaga** (`04-tolvupostar-samskipti.txt`): Skrifleg samskiptasaga lögmanns, stjórnar húsfélags og verktaka.
+   - **Greiðsluáskorun og yfirlýsing um riftun** (`05-greidsluaskorun-riftun.txt`): Formleg áskorun með 15 daga fresti og riftunaryfirlýsing.
+   - **Beiðni um dómkvaðningu matsmanna** (`06-domkvaedning-matsmanna.txt`): Beiðni til dómstóls skv. XII. kafla laga nr. 91/1991 með 6 matsspurningum.
+3. **Forskoðun og innflutningur:**
+   - Í innflutningsglugganum er hægt að forskoða meginmál hvers skjals áður en það er flutt inn.
+   - Veljið hvort skjölin skuli sett inn í **núverandi mál**, **annað skráð mál**, eða hvort **stofna eigi nýtt mál** út frá dæmaskjölunum.
+   - Einnig er hægt að hlaða niður frumskjölum beint af slóðinni `/examples/[skráarheiti]`.
 
 ---
 
@@ -169,12 +188,35 @@ Lögmönnum er skylt að gæta þagmælsku um málefni umbjóðenda sinna (**lö
 
 ---
 
-## 10. Flýtilyklar & Góð Ráð
+## 10. Kerfisstjórn ILCMS & Auðlindavöktun K3s (Admin Console & Cluster Metrics)
+
+Fyrir stjórnendur kerfisins (notendur með hlutverkið `admin`) er innbyggt sérstakt stjórnborð:
+
+### Aðgangur að kerfisstjórn
+- Smellið á hnappinn **„⚙️ Kerfisstjórn“** (`#btn-admin-console`) efst til hægri í toppstikunni eða í prófílvalmynd.
+
+### Rauntímavöktun á K3s klasa (Resource Monitor)
+Innbyggður auðlindamælir (`K3sResourceMonitorWidget`) birtir lifandi mælingar beint úr Linux kjarna og K3s gámaumhverfi:
+- **Örgjörvi (CPU):** Hlutfall nýtingar, fjöldi kjarna og álag (`load averages 1m/5m/15m`).
+- **Vinnsluminni (RAM):** Rauntímanotkun gáma (Ollama, PostgreSQL, Keycloak, Web) á móti heildarminni hýsils, með sérstakri viðvörun ef minni fer yfir 85%.
+- **Geymslupláss (Disk):** Nýting á NVMe/SSD gagnageymslum, gagnagrunnsskrám og líkanageymslu Ollama (`/root/.ollama`).
+- **Gámastaða (STAÐA):** Sýnir lifandi stöðu hvers þjónustugáms (`Ready`, `Running`, `Health`).
+
+### Kerfisaðgerðir stjórnanda:
+- **Aðgangsstýring:** Yfirlit yfir virka notendur, hlutverk (`lawyer`, `judge`, `admin`, `paralegal`) og innskráningarsögu.
+- **Skyndiminni & Vigurgrunnur:** Aðgerðir til að endurbyggja HNSW leitarvigur (`pgvector`) og tæma tímabundin skyndiminni.
+- **Öryggisskoðun (Air-Gap Audit):** Staðfesting á zero outbound egress og prófun á staðbundnu neteinangrunarkerfi.
+
+---
+
+## 11. Flýtilyklar & Góð Ráð
 
 | Aðgerð | Hvar finnst hún? | Lýsing |
 | :--- | :--- | :--- |
 | **Flýtileit í málum** | Vinstri dálkur | Sláið inn málsnúmer eða nafn aðila |
 | **Nýtt mál** | Vinstri dálkur | Hnappurinn `+ Nýtt mál` |
-| **Málsgagnasafn** | Miðdálkur -> `Málsgagnasafn` | Skoða efnisyfirlit og búa til heildar PDF |
-| **Tímataka** | Miðdálkur -> `Tímar & Málskostnaður` | Byrja/stöðva tíma með einum smelli |
+| **Dæmasafn (/examples)** | Vinstri dálkur eða Skjöl | Hnappurinn `📁 Dæmaskjöl` til að sækja tilbúin íslensk málsgögn |
+| **Málsgagnasafn** | Miðdálkur -> `Málsgagnasafn` | Skoða efnisyfirlit og búa til heildar PDF skv. reglum 1/2020 |
+| **Tímataka** | Miðdálkur -> `Tímar & Málskostnaður` | Byrja/stöðva tíma með einum smelli og reikna 130. gr. kostnað |
 | **Air-Gap Innviðir** | Toppstika -> `🛡️ Air-Gap` | Sjá stöðu staðbundins Ollama og vinnsluminnis |
+| **Kerfisstjórn & K3s Monitor** | Toppstika -> `⚙️ Kerfisstjórn` | Opna stjórnborð með rauntímavöktun á CPU, RAM og diski |

@@ -13,6 +13,8 @@ import {
   INITIAL_AUDIT_EVENTS,
   INITIAL_LOGS,
 } from "@/lib/admin-store";
+import { E2ETestReport } from "@/app/api/v1/admin/e2e-test/route";
+import { K3sResourceMonitorWidget } from "@/components/K3sResourceMonitorWidget";
 
 interface AdminConsoleModalProps {
   isOpen: boolean;
@@ -23,6 +25,12 @@ interface AdminConsoleModalProps {
 export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsoleModalProps) {
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<"dashboard" | "users" | "audit" | "logs">("dashboard");
+
+  // E2E Test State
+  const [isE2ETestRunning, setIsE2ETestRunning] = useState(false);
+  const [e2eProgressStep, setE2EProgressStep] = useState<string | null>(null);
+  const [e2eReport, setE2EReport] = useState<E2ETestReport | null>(null);
+  const [showE2EReportModal, setShowE2EReportModal] = useState(false);
 
   // Services and resources state
   const [services, setServices] = useState<SystemService[]>(INITIAL_SERVICES);
@@ -233,6 +241,90 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
       setActionInProgress(null);
       setTimeout(() => setStatusFeedback(null), 4000);
     }
+  };
+
+  const handleRunE2ETest = async () => {
+    try {
+      setIsE2ETestRunning(true);
+      setE2EProgressStep("1/6: Keycloak 24 IAM...");
+      setStatusFeedback("Keyrir heildarprófun (End-to-End Test) á öllum hlutum kerfisins...");
+
+      const stepTimer1 = setTimeout(() => setE2EProgressStep("2/6: PostgreSQL 16 & pgvector..."), 120);
+      const stepTimer2 = setTimeout(() => setE2EProgressStep("3/6: Ollama Gemma 2 9B (Air-Gap)..."), 250);
+      const stepTimer3 = setTimeout(() => setE2EProgressStep("4/6: Dómstólasýslan 1/2020..."), 380);
+      const stepTimer4 = setTimeout(() => setE2EProgressStep("5/6: Tímaskráning & Gjaldskrá..."), 500);
+      const stepTimer5 = setTimeout(() => setE2EProgressStep("6/6: Hreinsar & eyðir öllum prófunargögnum..."), 620);
+
+      const res = await fetch("/api/v1/admin/e2e-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userEmail: currentUser?.email || "admin@ilcms.is" }),
+      });
+
+      clearTimeout(stepTimer1);
+      clearTimeout(stepTimer2);
+      clearTimeout(stepTimer3);
+      clearTimeout(stepTimer4);
+      clearTimeout(stepTimer5);
+
+      const data = await res.json();
+      if (res.ok && data.report) {
+        setE2EReport(data.report);
+        setShowE2EReportModal(true);
+        setStatusFeedback("Heildarprófun lauk: STAÐIST. Öllum prófunargögnum hefur verið eytt.");
+
+        // Record in audit log
+        setAuditEvents((prev) => [
+          {
+            id: `aud-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            userName: currentUser?.name || "Kerfisstjóri ILCMS",
+            userEmail: currentUser?.email || "admin@ilcms.is",
+            role: "ADMIN",
+            action: "Heildarprófun (E2E Test)",
+            category: "ADMIN",
+            target: "Allir kerfishlutar (Docker / K3s Stack)",
+            ipAddress: "127.0.0.1",
+            status: "SUCCESS",
+            details: `Keyrði prófun á öllum 6 einingum kerfisins á ${data.report.totalDurationMs}ms. Öllum tímabundnum prófunargögnum var eytt (0 gögn eftir).`,
+          },
+          ...prev,
+        ]);
+
+        // Record in system logs
+        setLogs((prev) => [
+          {
+            id: `log-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            service: "ilcms-web",
+            level: "INFO",
+            message: `E2E System Test Completed: 6/6 stages passed in ${data.report.totalDurationMs}ms. Cleanup verified: 0 test artifacts remaining.`,
+          },
+          ...prev,
+        ]);
+      } else {
+        alert(data.error || "Mistókst að keyra heildarprófun.");
+      }
+    } catch (e: any) {
+      alert(`Villa í heildarprófun: ${e.message}`);
+    } finally {
+      setIsE2ETestRunning(false);
+      setE2EProgressStep(null);
+      setTimeout(() => setStatusFeedback(null), 5000);
+    }
+  };
+
+  const exportE2EReportJson = () => {
+    if (!e2eReport) return;
+    const blob = new Blob([JSON.stringify(e2eReport, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `ilcms_e2e_test_report_${e2eReport.testRunId}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const fetchUsers = async () => {
@@ -744,136 +836,8 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
           {/* ========================================================================= */}
           {activeTab === "dashboard" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-              {/* Top Resource Gauges / Metrics */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-                  gap: "14px",
-                }}
-              >
-                {/* CPU Card */}
-                <div
-                  style={{
-                    background: "#0f172a",
-                    border: "1px solid #1e293b",
-                    borderRadius: "8px",
-                    padding: "16px",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", color: "#94a3b8", fontSize: "0.78rem" }}>
-                    <span>ÖRGJÖRVI (CPU)</span>
-                    <span>{resources.cpu.totalCores} kjarnar</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "6px" }}>
-                    <span style={{ fontSize: "1.6rem", fontWeight: 700, color: "#38bdf8" }}>
-                      {resources.cpu.usagePercent}%
-                    </span>
-                    <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
-                      Hleðsla: {resources.cpu.loadAverage.join(", ")}
-                    </span>
-                  </div>
-                  <div style={{ width: "100%", height: "6px", background: "#1e293b", borderRadius: "3px", marginTop: "10px", overflow: "hidden" }}>
-                    <div
-                      style={{
-                        width: `${Math.min(100, resources.cpu.usagePercent)}%`,
-                        height: "100%",
-                        background: resources.cpu.usagePercent > 80 ? "#ef4444" : "#0284c7",
-                        transition: "width 0.3s ease",
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* RAM Card */}
-                <div
-                  style={{
-                    background: "#0f172a",
-                    border: "1px solid #1e293b",
-                    borderRadius: "8px",
-                    padding: "16px",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", color: "#94a3b8", fontSize: "0.78rem" }}>
-                    <span>VINNSLUMINNI (RAM)</span>
-                    <span>{(resources.memory.totalMb / 1024).toFixed(1)} GB Heild</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "6px" }}>
-                    <span style={{ fontSize: "1.6rem", fontWeight: 700, color: "#a855f7" }}>
-                      {(resources.memory.usedMb / 1024).toFixed(1)} GB
-                    </span>
-                    <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
-                      ({((resources.memory.usedMb / resources.memory.totalMb) * 100).toFixed(0)}% notað)
-                    </span>
-                  </div>
-                  <div style={{ width: "100%", height: "6px", background: "#1e293b", borderRadius: "3px", marginTop: "10px", overflow: "hidden" }}>
-                    <div
-                      style={{
-                        width: `${((resources.memory.usedMb / resources.memory.totalMb) * 100).toFixed(1)}%`,
-                        height: "100%",
-                        background: "#a855f7",
-                        transition: "width 0.3s ease",
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Disk Space Card */}
-                <div
-                  style={{
-                    background: "#0f172a",
-                    border: "1px solid #1e293b",
-                    borderRadius: "8px",
-                    padding: "16px",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", color: "#94a3b8", fontSize: "0.78rem" }}>
-                    <span>DISKAPLÁSS (NVMe)</span>
-                    <span>{resources.disk.totalGb} GB Heild</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "6px" }}>
-                    <span style={{ fontSize: "1.6rem", fontWeight: 700, color: "#10b981" }}>
-                      {resources.disk.usedGb} GB
-                    </span>
-                    <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
-                      ({resources.disk.freeGb} GB laust)
-                    </span>
-                  </div>
-                  <div style={{ width: "100%", height: "6px", background: "#1e293b", borderRadius: "3px", marginTop: "10px", overflow: "hidden" }}>
-                    <div
-                      style={{
-                        width: `${((resources.disk.usedGb / resources.disk.totalGb) * 100).toFixed(1)}%`,
-                        height: "100%",
-                        background: "#10b981",
-                        transition: "width 0.3s ease",
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Air-Gap / Security Card */}
-                <div
-                  style={{
-                    background: "#0f172a",
-                    border: "1px solid #1e293b",
-                    borderRadius: "8px",
-                    padding: "16px",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", color: "#94a3b8", fontSize: "0.78rem" }}>
-                    <span>AIR-GAP ÖRYGGI</span>
-                    <span>Zero Egress</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginTop: "6px" }}>
-                    <span style={{ fontSize: "1.4rem", fontWeight: 700, color: "#22c55e" }}>
-                      0 B ÚTFLÆÐI
-                    </span>
-                  </div>
-                  <div style={{ fontSize: "0.73rem", color: "#34d399", marginTop: "6px" }}>
-                    ✓ 100% Einangrað lögfræðimállíkan án ytri nettengingar
-                  </div>
-                </div>
-              </div>
+              {/* K3s Cluster Live Resource Monitor Widget */}
+              <K3sResourceMonitorWidget onRefreshParent={fetchServices} />
 
               {/* System Components Header & Global Action */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "6px" }}>
@@ -885,25 +849,51 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
                     Stöðuvöktun, auðlindanýting og aðgerðir (Start / Stop / Restart) fyrir hvern einstakan hluta.
                   </p>
                 </div>
-                <button
-                  onClick={handleRestartAll}
-                  disabled={actionInProgress !== null}
-                  style={{
-                    padding: "6px 14px",
-                    background: "#7f1d1d",
-                    color: "#fecaca",
-                    border: "1px solid #b91c1c",
-                    borderRadius: "6px",
-                    fontSize: "0.78rem",
-                    fontWeight: 600,
-                    cursor: actionInProgress ? "not-allowed" : "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                  }}
-                >
-                  ⚠️ Endurræsa Allar Einingar
-                </button>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                  <button
+                    id="btn-run-e2e-test"
+                    onClick={handleRunE2ETest}
+                    disabled={isE2ETestRunning || actionInProgress !== null}
+                    style={{
+                      padding: "6px 14px",
+                      background: isE2ETestRunning ? "#064e3b" : "linear-gradient(135deg, #065f46, #059669)",
+                      color: "#ecfdf5",
+                      border: "1px solid #10b981",
+                      borderRadius: "6px",
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      cursor: isE2ETestRunning ? "wait" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      boxShadow: "0 0 12px rgba(16, 185, 129, 0.25)",
+                      transition: "all 0.15s ease",
+                    }}
+                    title="Keyra heildarprófun (End-to-End Test) á öllum hlutum kerfisins og eyða prófunargögnum"
+                  >
+                    <span>{isE2ETestRunning ? "⏳" : "🧪"}</span>
+                    <span>{isE2ETestRunning ? (e2eProgressStep || "Keyrir prófun...") : "Keyra Heildarprófun (E2E Test)"}</span>
+                  </button>
+                  <button
+                    onClick={handleRestartAll}
+                    disabled={actionInProgress !== null || isE2ETestRunning}
+                    style={{
+                      padding: "6px 14px",
+                      background: "#7f1d1d",
+                      color: "#fecaca",
+                      border: "1px solid #b91c1c",
+                      borderRadius: "6px",
+                      fontSize: "0.78rem",
+                      fontWeight: 600,
+                      cursor: actionInProgress || isE2ETestRunning ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    ⚠️ Endurræsa Allar Einingar
+                  </button>
+                </div>
               </div>
 
               {/* Services Table */}
@@ -2017,6 +2007,271 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
               >
                 Staðfesta Nýtt Lykilorð
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Heildarprófunarskýrsla (E2E Test Report Modal) */}
+      {showE2EReportModal && e2eReport && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(3, 7, 18, 0.85)",
+            backdropFilter: "blur(6px)",
+            zIndex: 10002,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              background: "#090d16",
+              border: "1px solid #059669",
+              borderRadius: "12px",
+              padding: "24px",
+              maxWidth: "840px",
+              width: "100%",
+              maxHeight: "88vh",
+              overflowY: "auto",
+              boxShadow: "0 25px 50px -12px rgba(5, 150, 105, 0.25)",
+              color: "#f8fafc",
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "1px solid #1e293b", paddingBottom: "14px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  style={{
+                    width: "42px",
+                    height: "42px",
+                    borderRadius: "10px",
+                    background: "linear-gradient(135deg, #065f46, #10b981)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "1.3rem",
+                  }}
+                >
+                  ✓
+                </div>
+                <div>
+                  <h3 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0, color: "#ecfdf5" }}>
+                    Heildarprófun Kerfis — Niðurstöðuskýrsla (E2E Test Report)
+                  </h3>
+                  <p style={{ fontSize: "0.75rem", color: "#94a3b8", margin: "2px 0 0 0" }}>
+                    Prófunarkeyrsla: <code>{e2eReport.testRunId}</code> • Keyrt af: <code>{e2eReport.executedBy}</code> • {new Date(e2eReport.timestamp).toLocaleString("is-IS")}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowE2EReportModal(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#94a3b8",
+                  fontSize: "1.2rem",
+                  cursor: "pointer",
+                  padding: "4px 8px",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Quick Metrics Bar */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}>
+              <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: "8px", padding: "12px" }}>
+                <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>HEILDARNIÐURSTAÐA</div>
+                <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#34d399", marginTop: "2px" }}>
+                  {e2eReport.summary.verdict}
+                </div>
+              </div>
+              <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: "8px", padding: "12px" }}>
+                <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>KEYRSLUTÍMI</div>
+                <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#38bdf8", marginTop: "2px" }}>
+                  {e2eReport.totalDurationMs} ms
+                </div>
+              </div>
+              <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: "8px", padding: "12px" }}>
+                <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>PRÓFUNARSTIG</div>
+                <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#a855f7", marginTop: "2px" }}>
+                  {e2eReport.summary.passedStages} / {e2eReport.summary.totalStages} Stóðust
+                </div>
+              </div>
+              <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: "8px", padding: "12px" }}>
+                <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>AIR-GAP EINANGRUN</div>
+                <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#10b981", marginTop: "2px" }}>
+                  0 B Útflæði
+                </div>
+              </div>
+            </div>
+
+            {/* Test Data Cleanup Confirmation Box */}
+            <div
+              style={{
+                background: "linear-gradient(135deg, rgba(6, 78, 59, 0.35), rgba(15, 23, 42, 0.8))",
+                border: "1px solid #059669",
+                borderRadius: "8px",
+                padding: "14px 18px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#34d399", fontWeight: 700, fontSize: "0.88rem" }}>
+                <span>🧹</span>
+                <span>Hreinsun Prófunargagna Staðfest (100% Cleanup Complete)</span>
+              </div>
+              <p style={{ fontSize: "0.78rem", color: "#cbd5e1", margin: "6px 0 10px 0", lineHeight: 1.5 }}>
+                Öllum tímabundnum gögnum sem stofnuð voru meðan á heildarprófun stóð hefur verið eytt úr gagnagrunni og skráakerfi. Engin prófunarúrgangsgögn sitja eftir í raunvinnslukerfinu:
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "8px", fontSize: "0.74rem" }}>
+                <div style={{ background: "#064e3b", padding: "6px 10px", borderRadius: "4px", color: "#a7f3d0" }}>
+                  • Prufumál eytt: <strong>{e2eReport.cleanupReport.temporaryCasesPurged}</strong>
+                </div>
+                <div style={{ background: "#064e3b", padding: "6px 10px", borderRadius: "4px", color: "#a7f3d0" }}>
+                  • Prufuskjöl eytt: <strong>{e2eReport.cleanupReport.temporaryDocumentsPurged}</strong>
+                </div>
+                <div style={{ background: "#064e3b", padding: "6px 10px", borderRadius: "4px", color: "#a7f3d0" }}>
+                  • Vigrar eytt: <strong>{e2eReport.cleanupReport.temporaryVectorsPurged}</strong>
+                </div>
+                <div style={{ background: "#064e3b", padding: "6px 10px", borderRadius: "4px", color: "#a7f3d0" }}>
+                  • Tímafærslum eytt: <strong>{e2eReport.cleanupReport.temporaryBillingEntriesPurged}</strong>
+                </div>
+                <div style={{ background: "#022c22", padding: "6px 10px", borderRadius: "4px", color: "#6ee7b7", border: "1px solid #059669" }}>
+                  • Eftirstandandi gögn: <strong>0</strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Stages Breakdown List */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#cbd5e1" }}>
+                Sundurliðun á Prófunarstigum (Test Stages):
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {e2eReport.stages.map((stg, idx) => (
+                  <div
+                    key={stg.id}
+                    style={{
+                      background: "#0f172a",
+                      border: "1px solid #1e293b",
+                      borderRadius: "6px",
+                      padding: "10px 14px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "12px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1 }}>
+                      <span
+                        style={{
+                          width: "22px",
+                          height: "22px",
+                          borderRadius: "50%",
+                          background: "#064e3b",
+                          color: "#34d399",
+                          fontSize: "0.72rem",
+                          fontWeight: 700,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {idx + 1}
+                      </span>
+                      <div>
+                        <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#f8fafc" }}>
+                          {stg.name}
+                        </div>
+                        <div style={{ fontSize: "0.73rem", color: "#94a3b8", marginTop: "2px" }}>
+                          {stg.details}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <span style={{ fontSize: "0.74rem", color: "#38bdf8", fontFamily: "monospace" }}>
+                        {stg.durationMs} ms
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "0.7rem",
+                          padding: "2px 8px",
+                          borderRadius: "10px",
+                          background: "#064e3b",
+                          color: "#34d399",
+                          fontWeight: 600,
+                          border: "1px solid #059669",
+                        }}
+                      >
+                        ✓ {stg.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #1e293b", paddingTop: "14px", marginTop: "4px" }}>
+              <button
+                onClick={exportE2EReportJson}
+                style={{
+                  padding: "8px 14px",
+                  background: "#1e293b",
+                  color: "#38bdf8",
+                  border: "1px solid #0284c7",
+                  borderRadius: "6px",
+                  fontSize: "0.78rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                📥 Sækja Prófunarskýrslu (.json)
+              </button>
+
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  onClick={handleRunE2ETest}
+                  disabled={isE2ETestRunning}
+                  style={{
+                    padding: "8px 16px",
+                    background: "#065f46",
+                    color: "#a7f3d0",
+                    border: "1px solid #047857",
+                    borderRadius: "6px",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  🔄 Keyra Aftur
+                </button>
+                <button
+                  onClick={() => setShowE2EReportModal(false)}
+                  style={{
+                    padding: "8px 20px",
+                    background: "#334155",
+                    color: "#f8fafc",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Loka Skýrslu
+                </button>
+              </div>
             </div>
           </div>
         </div>

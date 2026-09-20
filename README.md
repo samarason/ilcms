@@ -40,6 +40,8 @@ The primary purpose of ILCMS is to provide Icelandic litigation attorneys and ju
 4. **Legal Drafting Studio (*Rafræn Lögmannsstofa & Skjalagerð*):** Drafting of writs (*stefnur*), defense statements (*greinargerðir*), motions to dismiss (*frávísunarkröfur*), and witness lists with version diffing and Word (.docx)/PDF exports.
 5. **Statutory Fee & Cost Accounting (*130. gr. eml. Málskostnaðarreiknivél*):** Live billable timer, court filing fee calculator (*stefnugjöld 131. gr.*), outlay accounting, 24% VAT, and automated formal cost schedules for court submission.
 6. **Air-Gapped Legal AI Assistant:** On-device semantic search, legal question answering, statutory cross-referencing, and precedent citations with pinpoint document references.
+7. **Example Legal Document Library (`/examples`):** Production-grade library of realistic Icelandic trial materials (expert reports, construction contracts, summons, legal emails, demand letters, and surveyor petitions) importable directly into existing or newly created cases via `/api/v1/examples`.
+8. **System Administration & K3s Resource Monitor (*Kerfisstjórn*):** Centralized administration console with real-time Kubernetes/K3s CPU, RAM, and Disk metrics (`/api/v1/admin/cluster-metrics`), user RBAC controls, cache diagnostics, and strict zero-egress audit verification.
 
 ---
 
@@ -328,13 +330,29 @@ Below are high-resolution screenshots illustrating the end-to-end legal workflow
 
 ---
 
+### 8. System Administration & K3s Resource Monitor (*Kerfisstjórn*)
+
+- **Centralized Admin Console (`AdminConsoleModal`):** One-click administrative console accessible via `#btn-admin-console`.
+- **Live K3s Cluster Monitor (`K3sResourceMonitorWidget`):** Live telemetry for CPU load percentage, RAM usage (active vs limits vs free buffer), and disk volume occupancy reading real host and cgroup counters from `/api/v1/admin/cluster-metrics`.
+- **Example Documents Engine (`/examples`):** Instant repository inspection and case import modal (`ExampleDocsPickerModal`) allowing attorneys to test the full litigation lifecycle with complete, authentic Icelandic evidence packets.
+
+---
+
 ## Technology Stack
 
 - **Frontend & Server API:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS.
 - **On-Device AI Inference:** Ollama 0.5.7 with fine-tuned **Gemma 2 9B Instruct** & **nomic-embed-text** (100% Air-Gapped / Zero Egress).
 - **Relational & Vector Database:** PostgreSQL 16 Alpine with `pgvector` extension and HNSW indexing.
 - **Identity Provider:** Keycloak 24 (Quarkus runtime) with OIDC authentication.
+- **Cluster & Infrastructure Telemetry:** Real-time K3s resource monitoring (`/api/v1/admin/cluster-metrics`).
+- **Trial Examples Ingestion:** Dynamic `/examples` catalog and import API (`/api/v1/examples`).
 - **Document Engines:** PDFKit / jsPDF for court bundles; Mammoth for DOCX ingestion; standard iCalendar (.ics).
+
+---
+
+## Linguistic Standards
+
+All user-facing views, tables, and system diagnostics strictly adhere to standard Icelandic legal terminology and grammar (including proper nominative status labeling **STAÐA** instead of grammatical errors).
 
 ---
 

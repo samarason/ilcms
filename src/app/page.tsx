@@ -7,6 +7,7 @@ import { BillingManagementTab } from "@/components/BillingManagementTab";
 import { LegalCompareModal } from "@/components/LegalCompareModal";
 import { LegalDraftingView } from "@/components/LegalDraftingView";
 import { AdminConsoleModal } from "@/components/AdminConsoleModal";
+import { ExampleDocsPickerModal } from "@/components/ExampleDocsPickerModal";
 import { PRE_SEEDED_STATUTES } from "@/lib/legal-knowledge";
 import { evaluateCaseDeadlineUrgency, getDeadlineHoursRemaining } from "@/lib/deadline-urgency";
 
@@ -27,6 +28,7 @@ export default function Dashboard() {
   const [showNewCase, setShowNewCase] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
+  const [showExamplePicker, setShowExamplePicker] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -447,6 +449,13 @@ export default function Dashboard() {
       setNewDesc("");
       fetchCases();
     }
+  };
+
+  const handleExamplePickerSuccess = async (targetCaseId: string, newCaseCreated?: boolean) => {
+    await fetchCases();
+    setSelectedCaseId(targetCaseId);
+    await fetchDocs(targetCaseId);
+    setActiveTab("docs");
   };
 
   const handleUploadDoc = async (e: React.FormEvent) => {
@@ -1004,21 +1013,45 @@ export default function Dashboard() {
                   {cases.length}
                 </span>
               </div>
-              <button
-                id="btn-new-case"
-                onClick={() => setShowNewCase(true)}
-                style={{
-                  background: "#2563eb",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "4px",
-                  padding: "4px 8px",
-                  fontSize: "0.8rem",
-                  cursor: "pointer",
-                }}
-              >
-                + Nýtt mál
-              </button>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button
+                  id="btn-new-case"
+                  onClick={() => setShowNewCase(true)}
+                  style={{
+                    background: "#2563eb",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "4px",
+                    padding: "4px 8px",
+                    fontSize: "0.8rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  + Nýtt mál
+                </button>
+                <button
+                  id="btn-open-examples-modal"
+                  type="button"
+                  onClick={() => setShowExamplePicker(true)}
+                  title="Sækja dæmaskjöl úr /examples og setja inn í mál"
+                  style={{
+                    background: "#eff6ff",
+                    color: "#1d4ed8",
+                    border: "1px solid #bfdbfe",
+                    borderRadius: "4px",
+                    padding: "4px 8px",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <span>📁</span>
+                  <span>Dæmaskjöl</span>
+                </button>
+              </div>
             </div>
 
             {/* Urgent Deadlines (<48h) Filter & Prioritize Toggles */}
@@ -1742,6 +1775,28 @@ export default function Dashboard() {
                       <span style={{ fontSize: "0.74rem", color: "#64748b" }}>
                         Styður Word (.docx), PDF og textaskjöl
                       </span>
+                      <button
+                        type="button"
+                        id="btn-fetch-examples-doc"
+                        onClick={() => setShowExamplePicker(true)}
+                        title="Sækja dæmaskjöl úr /examples (Sérfræðiskýrsla, samningur, stefna, tölvupóstar...)"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          background: "#f0fdf4",
+                          color: "#166534",
+                          border: "1px solid #bbf7d0",
+                          borderRadius: "4px",
+                          padding: "6px 12px",
+                          fontSize: "0.82rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <span>📁</span>
+                        <span>Sækja dæmaskjöl (/examples)</span>
+                      </button>
                       <button
                         type="button"
                         id="btn-draft-from-docs"
@@ -3451,6 +3506,42 @@ export default function Dashboard() {
                   Stofna mál
                 </button>
               </div>
+
+              <div
+                style={{
+                  marginTop: "12px",
+                  paddingTop: "12px",
+                  borderTop: "1px dashed #cbd5e1",
+                  textAlign: "center",
+                }}
+              >
+                <button
+                  type="button"
+                  id="btn-switch-to-examples"
+                  onClick={() => {
+                    setShowNewCase(false);
+                    setShowExamplePicker(true);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "7px 10px",
+                    background: "#f0fdf4",
+                    color: "#166534",
+                    border: "1px solid #bbf7d0",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <span>📁</span>
+                  <span>Eða stofna mál með dæmaskjölum úr /examples</span>
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -3612,6 +3703,15 @@ export default function Dashboard() {
         isOpen={showAdminConsoleModal}
         onClose={() => setShowAdminConsoleModal(false)}
         currentUser={user}
+      />
+
+      {/* Dæmaskjöl modal (/examples) */}
+      <ExampleDocsPickerModal
+        isOpen={showExamplePicker}
+        onClose={() => setShowExamplePicker(false)}
+        currentCaseId={selectedCaseId}
+        cases={cases}
+        onSuccess={handleExamplePickerSuccess}
       />
 
       {/* ATHUGASEMDIR (DOCUMENT NOTES) MODAL */}

@@ -68,3 +68,13 @@ The **Icelandic Legal Case Management System (ILCMS / Málastjórnunarkerfi)** i
 * **FR-AI-02:** Zero outbound network traffic: all case documents, pleadings, and queries remain strictly on the local machine.
 * **FR-AI-03:** Retrieval-Augmented Generation (RAG) powered by local dense embeddings (`nomic-embed-text`) with mandatory pinpoint citations.
 * **FR-AI-04:** Integrated statutory knowledge base covering core Icelandic statutes and landmark court rulings.
+
+### 2.8 Trial Example Documents & Case Ingestion (/examples)
+* **FR-EXMP-01 (Example Library Catalog):** Provide a structured repository of authentic Icelandic trial materials under `/examples` (expert surveyor reports, standard construction contracts skv. ÍST 30:2012, civil summonses, attorney correspondence, contract rescissions, and surveyor petitions) indexed via `manifest.json`.
+* **FR-EXMP-02 (Interactive Ingestion Modal):** Interactive modal (`ExampleDocsPickerModal`) allowing attorneys to preview complete document text, inspect metadata, download original files, and select files for import.
+* **FR-EXMP-03 (Automated Trial Seeding API):** REST API endpoint (`/api/v1/examples`) supporting insertion into active cases or one-click creation of a new trial case pre-populated with selected exhibits and procedural records.
+
+### 2.9 System Administration & Cluster Monitoring (Kerfisstjórn)
+* **FR-ADM-01 (Centralized Admin Console):** Dedicated administrative console (`AdminConsoleModal`) restricted to users with the `admin` role for diagnostics, cache management, and user oversight.
+* **FR-ADM-02 (Live K3s Resource Monitor):** Real-time telemetry dashboard widget (`K3sResourceMonitorWidget`) tracking CPU load, RAM utilization (container RSS vs host memory buffer), disk volume utilization, and container health (`STAÐA: Ready`) via `/api/v1/admin/cluster-metrics`.
+* **FR-ADM-03 (Linguistic & Legal Terminology Standards):** Enforce correct Icelandic legal grammar throughout all tables, headers, and badges (e.g. nominative status indicator "STAÐA").

@@ -329,6 +329,19 @@ The system includes pre-seeded Icelandic legal cases and court documents:
   2. Review the generated official cover page for *Héraðsdómur Reykjavíkur*.
   3. Click **⬇️ Sækja Dómaskjalaskrá (.txt)** or **🖨️ Prenta málsgagnasafn** to inspect the court-formatted exhibit index.
 
+### Scenario 4: Realistic Trial Evidence Ingestion via `/examples`
+- **Action:**
+  1. Click **📁 Dæmaskjöl** in the left sidebar or **📁 Sækja dæmaskjöl (/examples)** in the Documents tab.
+  2. Inspect the 6 authentic trial documents:
+     - `01-serfraediskyrsla-fasteignamat.txt`: Engineering defect survey (kr. 35.278.000).
+     - `02-samningur-verksamningur.txt`: Construction contract under ÍST 30:2012.
+     - `03-stefna-heradsdomur.txt`: Civil summons with full statements of claim.
+     - `04-tolvupostar-samskipti.txt`: Pre-trial correspondence and notice of leak damage.
+     - `05-greidsluaskorun-riftun.txt`: Payment demand and formal rescission notice.
+     - `06-domkvaedning-matsmanna.txt`: Petition for court-appointed surveyors.
+  3. Select any combination of documents and choose **Stofna nýtt mál** or **Bæta við virkt mál**.
+  4. Notice the documents immediately populate the matter repository with full text extraction, page counts, and instant readiness for local AI inference and court bundle generation.
+
 ---
 
 ## 10. Verification, Health Checks & Diagnostics
@@ -359,6 +372,18 @@ kubectl exec -it -n ilcms statefulset/postgres -- psql -U ilcms_admin -d ilcms_d
 curl -i http://localhost:8080/health/ready
 ```
 *Expected HTTP status: `200 OK`.*
+
+### 5. K3s Cluster Resource Telemetry Check
+```bash
+curl -s http://localhost:3000/api/v1/admin/cluster-metrics | jq .
+```
+*Expected JSON output: Real-time CPU core counts, load averages, memory allocations (Ollama, PostgreSQL, Keycloak, Web), disk volume utilization, and container status (`STAÐA: Ready`).*
+
+### 6. Example Documents API Health Check
+```bash
+curl -s http://localhost:3000/api/v1/examples | jq '.[].title'
+```
+*Confirm that all 6 template files in `/examples` are indexed and available for matter injection.*
 
 ---
 
