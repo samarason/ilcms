@@ -1,0 +1,68 @@
+[
+  {
+    "id": "ex-01-serfraediskyrsla",
+    "filename": "01-serfraediskyrsla-fasteignamat.txt",
+    "title": "Sérfræðiskýrsla og matsgerð dómkvaddra matsmanna.pdf",
+    "doc_type": "Sérfræðiskýrsla",
+    "author": "Jónas Halldórsson M.Sc. & Einar Þór Kárason, dómkvaddir matsmenn",
+    "filing_date": "2026-03-15",
+    "page_count": 14,
+    "summary": "Verkfræðileg matsgerð dómkvaddra matsmanna varðandi galla á utanhússklæðningu, einangrun og rakaskemmdir við Hlíðarveg 42. Heildarúrbótakostnaður metinn á kr. 35.278.000.",
+    "tags": ["Sérfræðiskýrsla", "Matsgerð", "Dómkvaðning", "Gallamat", "Byggingarverkfræði"]
+  },
+  {
+    "id": "ex-02-samningur",
+    "filename": "02-samningur-verksamningur.txt",
+    "title": "Verksamningur um endurbætur utanhúss (Hlíðarvegur 42).pdf",
+    "doc_type": "Samningur",
+    "author": "Húsfélagið Hlíðarvegi 42 & Byggingafélagið Varða ehf.",
+    "filing_date": "2024-06-15",
+    "page_count": 8,
+    "summary": "Stöðlaður verksamningur skv. ÍST 30:2012 að fjárhæð kr. 64.800.000 án VSK með ákvæðum um dagsektir (kr. 120.000/dag), tryggingarfé og riftun.",
+    "tags": ["Samningur", "Verksamningur", "ÍST 30", "Dagsektir", "Byggingaverk"]
+  },
+  {
+    "id": "ex-03-stefna",
+    "filename": "03-stefna-heradsdomur.txt",
+    "title": "Stefna í einkamáli fyrir Héraðsdómi Reykjavíkur.pdf",
+    "doc_type": "Stefna",
+    "author": "Sigurður Ólafsson hrl., lögmaður stefnanda",
+    "filing_date": "2026-04-08",
+    "page_count": 6,
+    "summary": "Stefna Húsfélagsins Hlíðarvegi 42 á hendur Byggingafélaginu Vörðu ehf. þar sem krafist er bóta að fjárhæð kr. 35.278.000 auk dagsekta kr. 9.600.000 og viðurkenningar á lögmæti riftunar.",
+    "tags": ["Stefna", "Dómsmál", "Héraðsdómur", "Skaðabætur", "Lögfræðileg krafa"]
+  },
+  {
+    "id": "ex-04-tolvupostar",
+    "filename": "04-tolvupostar-samskipti.txt",
+    "title": "Tölvupóstar og samskiptasaga lögmanna og verktaka.txt",
+    "doc_type": "Tölvupóstsamskipti",
+    "author": "Björn Stefánsson (Húsfélag), Magnús Óskarsson (Verktaki) & Sigurður Ólafsson hrl.",
+    "filing_date": "2025-10-22",
+    "page_count": 4,
+    "summary": "Tölvupóstsamskipti, tilkynningar um leka, svör verktaka um force majeure og formlegt lögmannsbréf með lokafresti til úrbóta.",
+    "tags": ["Tölvupóstar", "Samskiptasaga", "Aðvörunarbréf", "Sönnunargögn"]
+  },
+  {
+    "id": "ex-05-greidsluaskorun",
+    "filename": "05-greidsluaskorun-riftun.txt",
+    "title": "Greiðsluáskorun og yfirlýsing um riftun verksamnings.pdf",
+    "doc_type": "Greiðsluáskorun",
+    "author": "Sigurður Ólafsson hrl., f.h. Húsfélagsins Hlíðarvegi 42",
+    "filing_date": "2026-03-20",
+    "page_count": 3,
+    "summary": "Formleg riftunaryfirlýsing skv. 5. gr. verksamnings og greiðsluáskorun um kr. 46.718.000 með 15 daga greiðslufresti fyrir innheimtu og málshöfðun.",
+    "tags": ["Greiðsluáskorun", "Riftun", "Innheimta", "Vanefndir"]
+  },
+  {
+    "id": "ex-06-domkvaedning",
+    "filename": "06-domkvaedning-matsmanna.txt",
+    "title": "Beiðni um dómkvaðningu óvilhalla matsmanna skv. eml.pdf",
+    "doc_type": "Dómkvaðning matsmanna",
+    "author": "Sigurður Ólafsson hrl., lögmaður matsbeiðanda",
+    "filing_date": "2026-01-10",
+    "page_count": 4,
+    "summary": "Beiðni til Héraðsdóms Reykjavíkur um dómkvaðningu tveggja sérfróðra manna (byggingarverkfræðings og húsasmíðameistara) með 6 matsspurningum um galla og úrbótakostnað.",
+    "tags": ["Dómkvaðning", "Matsbeiðni", "Einkamálalög", "Sönnunargögn"]
+  }
+]

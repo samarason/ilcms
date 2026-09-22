@@ -1,0 +1,17 @@
+[Unit]
+Description=ILCMS Legal Workspace Standalone Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/ilcms
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=AIRGAP_MODE=true
+ExecStart=/usr/bin/node /opt/ilcms/server.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

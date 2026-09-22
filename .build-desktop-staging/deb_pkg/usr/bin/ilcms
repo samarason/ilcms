@@ -1,0 +1,64 @@
+#!/bin/bash
+# ILCMS Desktop Launcher for Linux
+APP_DIR="/opt/ilcms"
+PID_FILE="$HOME/.ilcms.pid"
+LOG_FILE="$HOME/.ilcms.log"
+PORT="${PORT:-3000}"
+
+is_running() {
+  if [ -f "$PID_FILE" ]; then
+    PID=$(cat "$PID_FILE" 2>/dev/null || echo "")
+    if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+      return 0
+    fi
+  fi
+  if curl -s -m 1 "http://127.0.0.1:${PORT}" >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
+}
+
+case "${1:-}" in
+  stop)
+    if [ -f "$PID_FILE" ]; then
+      PID=$(cat "$PID_FILE")
+      kill "$PID" 2>/dev/null || true
+      rm -f "$PID_FILE"
+      echo "ILCMS stopped."
+    else
+      echo "ILCMS is not running."
+    fi
+    exit 0
+    ;;
+  status)
+    if is_running; then
+      echo "ILCMS is running on http://127.0.0.1:${PORT}"
+    else
+      echo "ILCMS is not running."
+    fi
+    exit 0
+    ;;
+  *)
+    if ! is_running; then
+      if ! command -v node >/dev/null 2>&1; then
+        echo "Error: Node.js (>= 18.0) is required to run ILCMS."
+        echo "Please install Node.js: https://nodejs.org or via 'sudo apt install nodejs'"
+        exit 1
+      fi
+      echo "Starting ILCMS server in background..."
+      cd "$APP_DIR"
+      NODE_ENV=production PORT="${PORT}" nohup node server.js > "$LOG_FILE" 2>&1 &
+      echo $! > "$PID_FILE"
+      for i in {1..20}; do
+        if curl -s -m 1 "http://127.0.0.1:${PORT}" >/dev/null 2>&1; then
+          break
+        fi
+        sleep 0.4
+      done
+    fi
+    echo "ILCMS is active: http://127.0.0.1:${PORT}"
+    if command -v xdg-open >/dev/null 2>&1; then
+      xdg-open "http://127.0.0.1:${PORT}" >/dev/null 2>&1 &
+    fi
+    ;;
+esac

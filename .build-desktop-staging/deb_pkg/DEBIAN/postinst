@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+chmod +x /usr/bin/ilcms
+if command -v update-desktop-database >/dev/null 2>&1; then
+  update-desktop-database -q /usr/share/applications || true
+fi
+echo "================================================================================"
+echo " ILCMS has been installed successfully to /opt/ilcms"
+echo " Run 'ilcms' in terminal or launch from your Application Menu."
+echo "================================================================================"
+exit 0

@@ -94,6 +94,42 @@ chmod +x verify-airgap.sh
 
 ---
 
+## Standalone Desktop Packages (.msi, .rpm, .deb, .dmg)
+
+For client laptops and workstations that do not run Kubernetes (K3s) or Docker, ILCMS can be packaged into **ultra-lightweight native desktop installers** (~9.5 MB – 32 MB). These installers set up the complete system locally with a native OS desktop launcher, system menu integration, and local loopback operation.
+
+### Building All Desktop Packages
+
+Run the packaging script directly from the repository root:
+
+```bash
+# Build all packages (.msi, .deb, .rpm, .dmg)
+./package-desktop.sh --all
+
+# Or build individual package targets:
+./package-desktop.sh --deb    # Debian / Ubuntu (.deb)
+./package-desktop.sh --rpm    # Fedora / RHEL / openSUSE (.rpm)
+./package-desktop.sh --msi    # Microsoft Windows Installer (.msi)
+./package-desktop.sh --dmg    # macOS Disk Image (.dmg)
+```
+
+The resulting binaries are written directly to `dist/desktop/` with automated `SHA256SUMS` verification:
+
+| Target Platform | Package File | Package Type | Target OS & Installation Command |
+|---|---|---|---|
+| **Microsoft Windows** | `ILCMS-Setup-1.0.0.msi` | Windows Installer MSI | Double-click installer or `msiexec /i ILCMS-Setup-1.0.0.msi /quiet` |
+| **Ubuntu / Debian** | `ilcms_1.0.0_amd64.deb` | Debian Package DEB | `sudo dpkg -i ilcms_1.0.0_amd64.deb` |
+| **Fedora / RHEL / CentOS** | `ilcms-1.0.0-1.x86_64.rpm` | RPM Package | `sudo dnf install ./ilcms-1.0.0-1.x86_64.rpm` |
+| **Apple macOS** | `ILCMS-1.0.0.dmg` | Apple Disk Image DMG | Double-click DMG and drag `ILCMS.app` into `/Applications` |
+
+### Laptop Desktop Features:
+- **No Docker or K3s Needed:** Runs directly on the laptop OS using the Next.js standalone runtime with minimal system overhead.
+- **Native OS Integration:** Installs application shortcuts in the Windows Start Menu & Desktop, Linux Applications Menu (`.desktop`), and macOS Applications dock.
+- **Single-Click Launch:** Automatically starts the background local service on `http://127.0.0.1:3000` and opens the default web browser seamlessly.
+- **100% Offline & Air-Gapped:** Pre-configured with `AIRGAP_MODE=true` for complete attorney-client privilege isolation.
+
+---
+
 ## Visual Tour of the System (High-Resolution Screenshots)
 
 Below are high-resolution screenshots illustrating the end-to-end legal workflows available in ILCMS.
