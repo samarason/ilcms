@@ -446,6 +446,9 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
   };
 
   const handleToggleUserActive = async (user: AdminUser) => {
+    if (user.role === "ADMIN" || user.email === "admin@ilcms.is") {
+      return;
+    }
     const updatedStatus = !user.enabled;
     try {
       const res = await fetch("/api/v1/admin/users", {
@@ -468,6 +471,9 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
   };
 
   const handleUpdateUserRole = async (user: AdminUser, newRole: "ADMIN" | "LAWYER" | "JUDGE" | "PARALEGAL") => {
+    if (user.role === "ADMIN" || user.email === "admin@ilcms.is") {
+      return;
+    }
     try {
       const res = await fetch("/api/v1/admin/users", {
         method: "PUT",
@@ -1195,16 +1201,19 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
                         <td style={{ padding: "12px 14px" }}>
                           <select
                             value={usr.role}
+                            disabled={usr.role === "ADMIN"}
                             onChange={(e) => handleUpdateUserRole(usr, e.target.value as any)}
+                            title={usr.role === "ADMIN" ? "Ekki er hægt að breyta hlutverki kerfisstjóra (ADMIN)" : "Breyta hlutverki"}
                             style={{
-                              background: "#1e293b",
-                              color: "#f1f5f9",
-                              border: "1px solid #334155",
+                              background: usr.role === "ADMIN" ? "#0f172a" : "#1e293b",
+                              color: usr.role === "ADMIN" ? "#64748b" : "#f1f5f9",
+                              border: usr.role === "ADMIN" ? "1px solid #1e293b" : "1px solid #334155",
                               borderRadius: "4px",
                               padding: "4px 8px",
                               fontSize: "0.75rem",
-                              cursor: "pointer",
+                              cursor: usr.role === "ADMIN" ? "not-allowed" : "pointer",
                               fontWeight: 600,
+                              opacity: usr.role === "ADMIN" ? 0.5 : 1,
                             }}
                           >
                             <option value="LAWYER">⚖️ LÖGMAÐUR (LAWYER)</option>
@@ -1249,15 +1258,18 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
                               🔑 Lykilorð
                             </button>
                             <button
-                              onClick={() => handleToggleUserActive(usr)}
+                              onClick={() => usr.role !== "ADMIN" && handleToggleUserActive(usr)}
+                              disabled={usr.role === "ADMIN"}
+                              title={usr.role === "ADMIN" ? "Ekki er hægt að gera kerfisstjóra (ADMIN) óvirkan" : (usr.enabled ? "Gera óvirkan" : "Virkja")}
                               style={{
                                 padding: "4px 8px",
-                                background: usr.enabled ? "#1e293b" : "#450a0a",
-                                color: usr.enabled ? "#cbd5e1" : "#fca5a5",
+                                background: usr.role === "ADMIN" ? "#1e293b" : (usr.enabled ? "#1e293b" : "#450a0a"),
+                                color: usr.role === "ADMIN" ? "#64748b" : (usr.enabled ? "#cbd5e1" : "#fca5a5"),
                                 border: "1px solid #334155",
                                 borderRadius: "4px",
-                                cursor: "pointer",
+                                cursor: usr.role === "ADMIN" ? "not-allowed" : "pointer",
                                 fontSize: "0.72rem",
+                                opacity: usr.role === "ADMIN" ? 0.45 : 1,
                               }}
                             >
                               {usr.enabled ? "Gera óvirkan" : "Virkja"}

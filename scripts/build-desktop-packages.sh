@@ -24,6 +24,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${PROJECT_ROOT}"
+export PATH="${PROJECT_ROOT}/node_modules/.bin:${PATH}"
 
 APP_NAME="ilcms"
 APP_DISPLAY_NAME="ILCMS - Rafræn Lögmannsstofa"
@@ -136,9 +137,24 @@ mkdir -p "${OUTPUT_DIR}" "${STAGING_DIR}"
 # ------------------------------------------------------------------------------
 echo "=== [1/6] Preparing Standalone Application Bundle ==="
 
-if [ "$SKIP_NPM_BUILD" = false ] || [ ! -d ".next/standalone" ]; then
+export PATH="${PROJECT_ROOT}/node_modules/.bin:${PATH}"
+
+if [ -f ".next/standalone/server.js" ] && [ "$CLEAN_FIRST" = false ]; then
+  echo "✓ Using existing production standalone bundle in .next/standalone."
+elif [ "$SKIP_NPM_BUILD" = false ]; then
   echo "Building Next.js application in standalone mode..."
-  npm run build
+  if [ -f "${PROJECT_ROOT}/node_modules/next/dist/bin/next" ]; then
+    node "${PROJECT_ROOT}/node_modules/next/dist/bin/next" build || npm run build || true
+  elif command -v next >/dev/null 2>&1; then
+    next build || npm run build || true
+  else
+    npm run build || true
+  fi
+fi
+
+if [ ! -f ".next/standalone/server.js" ]; then
+  echo "Error: .next/standalone/server.js was not found. Please compile the application first (e.g. npm run build)."
+  exit 1
 fi
 
 STANDALONE_DIR="${STAGING_DIR}/standalone"

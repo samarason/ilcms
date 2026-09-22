@@ -71,6 +71,21 @@ export async function PUT(req: NextRequest) {
 
     const current = users[userIndex];
 
+    if (current.email === "admin@ilcms.is" || current.role === "ADMIN") {
+      if (role && role !== "ADMIN") {
+        return NextResponse.json(
+          { error: "Ekki er hægt að breyta hlutverki aðal kerfisstjóra (ADMIN)." },
+          { status: 403 }
+        );
+      }
+      if (enabled === false) {
+        return NextResponse.json(
+          { error: "Ekki er hægt að gera aðal kerfisstjóra (ADMIN) óvirkan." },
+          { status: 403 }
+        );
+      }
+    }
+
     if (action === "reset-password") {
       return NextResponse.json({
         success: true,
