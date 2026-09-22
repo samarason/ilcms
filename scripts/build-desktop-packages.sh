@@ -138,17 +138,21 @@ mkdir -p "${OUTPUT_DIR}" "${STAGING_DIR}"
 echo "=== [1/6] Preparing Standalone Application Bundle ==="
 
 export PATH="${PROJECT_ROOT}/node_modules/.bin:${PATH}"
+export NODE_ENV="production"
+export NEXT_IGNORE_INCORRECT_LOCKFILE="1"
 
 if [ -f ".next/standalone/server.js" ] && [ "$CLEAN_FIRST" = false ]; then
   echo "✓ Using existing production standalone bundle in .next/standalone."
 elif [ "$SKIP_NPM_BUILD" = false ]; then
   echo "Building Next.js application in standalone mode..."
-  if [ -f "${PROJECT_ROOT}/node_modules/next/dist/bin/next" ]; then
-    node "${PROJECT_ROOT}/node_modules/next/dist/bin/next" build || npm run build || true
+  if [ -x "${PROJECT_ROOT}/node_modules/.bin/next" ]; then
+    "${PROJECT_ROOT}/node_modules/.bin/next" build
   elif command -v next >/dev/null 2>&1; then
-    next build || npm run build || true
+    next build
+  elif command -v npx >/dev/null 2>&1; then
+    npx --no-install next build
   else
-    npm run build || true
+    npm run build
   fi
 fi
 
@@ -427,13 +431,17 @@ if [ "$BUILD_RPM" = true ]; then
   echo ""
   echo "=== [4/6] Building Fedora/RHEL/openSUSE (.rpm) Package ==="
 
-  RPM_BUILD_DIR="${STAGING_DIR}/rpmbuild"
-  rm -rf "${RPM_BUILD_DIR}"
-  mkdir -p "${RPM_BUILD_DIR}/SPECS"
-  mkdir -p "${RPM_BUILD_DIR}/SOURCES"
-  mkdir -p "${RPM_BUILD_DIR}/BUILD"
-  mkdir -p "${RPM_BUILD_DIR}/RPMS"
-  mkdir -p "${RPM_BUILD_DIR}/SRPMS"
+  if ! command -v rpmbuild >/dev/null 2>&1; then
+    echo "⚠️  'rpmbuild' was not found in PATH. Skipping .rpm package."
+    echo "    (To enable: sudo apt-get install -y rpm OR sudo dnf install -y rpm-build)"
+  else
+    RPM_BUILD_DIR="${STAGING_DIR}/rpmbuild"
+    rm -rf "${RPM_BUILD_DIR}"
+    mkdir -p "${RPM_BUILD_DIR}/SPECS"
+    mkdir -p "${RPM_BUILD_DIR}/SOURCES"
+    mkdir -p "${RPM_BUILD_DIR}/BUILD"
+    mkdir -p "${RPM_BUILD_DIR}/RPMS"
+    mkdir -p "${RPM_BUILD_DIR}/SRPMS"
 
   # Create payload tarball for rpmbuild
   PAYLOAD_TAR="${RPM_BUILD_DIR}/SOURCES/${APP_NAME}-${APP_VERSION}.tar.gz"
@@ -566,12 +574,13 @@ fi
 rm -rf %{buildroot}
 EOF
 
-  rpmbuild --define "_topdir ${RPM_BUILD_DIR}" -bb "${RPM_BUILD_DIR}/SPECS/ilcms.spec" >/dev/null
-  RPM_FILE=$(find "${RPM_BUILD_DIR}/RPMS" -name "*.rpm" | head -n 1)
-  RPM_DEST="${OUTPUT_DIR}/ilcms-${APP_VERSION}-1.x86_64.rpm"
-  cp "${RPM_FILE}" "${RPM_DEST}"
-  RPM_SIZE=$(du -sh "${RPM_DEST}" | cut -f1)
-  echo "✓ Built RPM package: ${RPM_DEST} (${RPM_SIZE})"
+    rpmbuild --define "_topdir ${RPM_BUILD_DIR}" -bb "${RPM_BUILD_DIR}/SPECS/ilcms.spec" >/dev/null
+    RPM_FILE=$(find "${RPM_BUILD_DIR}/RPMS" -name "*.rpm" | head -n 1)
+    RPM_DEST="${OUTPUT_DIR}/ilcms-${APP_VERSION}-1.x86_64.rpm"
+    cp "${RPM_FILE}" "${RPM_DEST}"
+    RPM_SIZE=$(du -sh "${RPM_DEST}" | cut -f1)
+    echo "✓ Built RPM package: ${RPM_DEST} (${RPM_SIZE})"
+  fi
 fi
 
 # ------------------------------------------------------------------------------
@@ -581,9 +590,13 @@ if [ "$BUILD_MSI" = true ]; then
   echo ""
   echo "=== [5/6] Building Windows Installer (.msi) Package ==="
 
-  MSI_STAGING="${STAGING_DIR}/msi"
-  rm -rf "${MSI_STAGING}"
-  mkdir -p "${MSI_STAGING}"
+  if ! command -v wixl >/dev/null 2>&1; then
+    echo "⚠️  'wixl' was not found in PATH. Skipping .msi package."
+    echo "    (To enable: sudo apt-get install -y wixl)"
+  else
+    MSI_STAGING="${STAGING_DIR}/msi"
+    rm -rf "${MSI_STAGING}"
+    mkdir -p "${MSI_STAGING}"
 
   # Package standalone app into compressed zip payload (~8MB)
   echo "Packing application payload for Windows Installer..."
@@ -749,10 +762,11 @@ EOF
 </Wix>
 EOF
 
-  MSI_FILE="${OUTPUT_DIR}/ILCMS-Setup-${APP_VERSION}.msi"
-  (cd "${MSI_STAGING}" && wixl -o "${MSI_FILE}" ilcms.wxs)
-  MSI_SIZE=$(du -sh "${MSI_FILE}" | cut -f1)
-  echo "✓ Built Windows MSI Installer: ${MSI_FILE} (${MSI_SIZE})"
+    MSI_FILE="${OUTPUT_DIR}/ILCMS-Setup-${APP_VERSION}.msi"
+    (cd "${MSI_STAGING}" && wixl -o "${MSI_FILE}" ilcms.wxs)
+    MSI_SIZE=$(du -sh "${MSI_FILE}" | cut -f1)
+    echo "✓ Built Windows MSI Installer: ${MSI_FILE} (${MSI_SIZE})"
+  fi
 fi
 
 # ------------------------------------------------------------------------------
@@ -762,9 +776,13 @@ if [ "$BUILD_DMG" = true ]; then
   echo ""
   echo "=== [6/6] Building macOS Disk Image (.dmg) Package ==="
 
-  DMG_STAGING="${STAGING_DIR}/dmg"
-  rm -rf "${DMG_STAGING}"
-  mkdir -p "${DMG_STAGING}"
+  if ! command -v hdiutil >/dev/null 2>&1 && ! command -v genisoimage >/dev/null 2>&1 && ! command -v mkisofs >/dev/null 2>&1; then
+    echo "⚠️  Neither 'hdiutil' nor 'genisoimage' was found in PATH. Skipping .dmg package."
+    echo "    (To enable on Debian/Ubuntu: sudo apt-get install -y genisoimage)"
+  else
+    DMG_STAGING="${STAGING_DIR}/dmg"
+    rm -rf "${DMG_STAGING}"
+    mkdir -p "${DMG_STAGING}"
 
   APP_BUNDLE="${DMG_STAGING}/ILCMS.app"
   mkdir -p "${APP_BUNDLE}/Contents/MacOS"
@@ -871,8 +889,9 @@ EOF
     genisoimage -V "ILCMS" -D -R -apple -no-pad -quiet -o "${DMG_FILE}" "${DMG_STAGING}"
   fi
 
-  DMG_SIZE=$(du -sh "${DMG_FILE}" | cut -f1)
-  echo "✓ Built macOS DMG image: ${DMG_FILE} (${DMG_SIZE})"
+    DMG_SIZE=$(du -sh "${DMG_FILE}" | cut -f1)
+    echo "✓ Built macOS DMG image: ${DMG_FILE} (${DMG_SIZE})"
+  fi
 fi
 
 # ------------------------------------------------------------------------------
