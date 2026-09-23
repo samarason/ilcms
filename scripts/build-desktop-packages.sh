@@ -145,14 +145,14 @@ if [ -f ".next/standalone/server.js" ] && [ "$CLEAN_FIRST" = false ]; then
   echo "✓ Using existing production standalone bundle in .next/standalone."
 elif [ "$SKIP_NPM_BUILD" = false ]; then
   echo "Building Next.js application in standalone mode..."
-  if [ -x "${PROJECT_ROOT}/node_modules/.bin/next" ]; then
+  if command -v npm >/dev/null 2>&1; then
+    npm run build
+  elif [ -x "${PROJECT_ROOT}/node_modules/.bin/next" ]; then
     "${PROJECT_ROOT}/node_modules/.bin/next" build
   elif command -v next >/dev/null 2>&1; then
     next build
-  elif command -v npx >/dev/null 2>&1; then
-    npx --no-install next build
   else
-    npm run build
+    node "${PROJECT_ROOT}/node_modules/next/dist/bin/next" build
   fi
 fi
 
