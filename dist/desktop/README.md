@@ -1,4 +1,3 @@
-```markdown
 # ILCMS Desktop (Demo Build)
 
 > *This document was written with the assistance of AI. All code and documentation have been human-reviewed and verified.*
