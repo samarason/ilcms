@@ -98,6 +98,8 @@ chmod +x verify-airgap.sh
 
 For client laptops and workstations that do not run Kubernetes (K3s) or Docker, ILCMS can be packaged into **ultra-lightweight native desktop installers** (~9.5 MB – 32 MB). These installers set up the complete system locally with a native OS desktop launcher, system menu integration, and local loopback operation.
 
+See precompiled packages in directory [dist/desktop/](dist/desktop/) and instructions in [dist/desktop/README.md](dist/desktop/README.md).
+
 ### Building All Desktop Packages
 
 Run the packaging script directly from the repository root:
