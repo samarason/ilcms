@@ -79,7 +79,11 @@ sudo apt install ./ilcms_1.0.0_amd64.deb
 
 *(Alternatively, use `sudo dpkg -i ilcms_1.0.0_amd64.deb` followed by `sudo apt-get install -f`)*
 
-3. Launch `ilcms` from your terminal or desktop application menu "/usr/local/bin/ilcms".
+3. Launch `ilcms` from your terminal or desktop application menu
+ ```bash
+   /usr/local/bin/ilcms
+   ```
+
 4. Open `http://127.0.0.1:3000` in your web browser (if it does not open automatically).
 
 ---
@@ -100,7 +104,11 @@ sudo dnf install ./ilcms-1.0.0-1.x86_64.rpm
 ```
 
 
-3. Run the installed `ilcms` application "/usr/local/bin/ilcms".
+3. Run the installed `ilcms` application
+ ```bash
+   /usr/local/bin/ilcms
+   ```
+
 4. Open `http://127.0.0.1:3000` in your web browser (if it does not open automatically).
 
 ---
