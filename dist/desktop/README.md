@@ -12,12 +12,7 @@ For detailed project documentation, architecture overviews, and source code, ple
 
 - **Node.js:** Node.js is required to run the service. If it is not already installed on your system, download and install it from [nodejs.org](https://nodejs.org/).
 - **Web Browser:** Once started, the desktop application runs a local service and opens in your web browser at:
-
-```
-
 [http://127.0.0.1:3000](http://127.0.0.1:3000)
-
-```
 
 ---
 
