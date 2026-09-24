@@ -14,6 +14,8 @@
 
 **ILCMS (Icelandic Legal Case Management System)** is a specialized, high-security legal practice and litigation management system specifically designed for Icelandic advocates, law firms, and judicial bodies.
 
+It's still in development and not ready for production.
+
 ### The 100% Air-Gapped AI Mandate: Zero Cloud Egress
 In legal practice, safeguarding attorney-client privilege (*lögmannstrúnaður* skv. lögum nr. 77/1998) and confidential client data (*persónuverndarlög nr. 90/2018*) is paramount. Commercial cloud AI tools (e.g. ChatGPT, public Gemini, Claude) transmit court briefs, witness testimonies, and corporate secrets to external data centers outside Icelandic jurisdiction.
 
@@ -450,3 +452,10 @@ All user-facing views, tables, and system diagnostics strictly adhere to standar
 ## License & Legal Disclaimers
 
 Copyright © 2026. Built in conformity with Icelandic Civil Litigation Act No. 91/1991 (*lög um meðferð einkamála*) and Court Administration Rules (*reglur dómstólasýslunnar*). All AI processing is performed strictly on local hardware with zero external telemetric reporting.
+
+---
+
+# Contributions
+
+Fork it, clone it and submit.  
+See directions [Here](https://github.com/firstcontributions/first-contributions)
