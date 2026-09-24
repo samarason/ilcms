@@ -197,6 +197,18 @@ export async function GET() {
         pvcSizeGb: 100,
       },
       {
+        name: "open-webui-74bf8df8c-m9x12",
+        namespace: "ai",
+        status: "Running",
+        cpuMilliCores: 88,
+        cpuPercent: 1.1,
+        memoryMb: 320,
+        restarts: 0,
+        age: "3d 14h",
+        pvcName: "open-webui-pvc",
+        pvcSizeGb: 10,
+      },
+      {
         name: "traefik-ingress-controller-44x2b",
         namespace: "kube-system",
         status: "Running",

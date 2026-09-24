@@ -236,6 +236,15 @@ else
   log_info "Web application port 3000 not currently running. Start with: npm run dev"
 fi
 
+# Check Open WebUI (Port 3080)
+OPEN_WEBUI_URL="http://127.0.0.1:3080"
+OW_CODE=$(curl -s -m 2 -o /dev/null -w "%{http_code}" "${OPEN_WEBUI_URL}" 2>/dev/null || true)
+if [ "$OW_CODE" = "200" ] || [ "$OW_CODE" = "302" ] || [ "$OW_CODE" = "307" ]; then
+  log_pass "Open WebUI browser AI interface is active on ${OPEN_WEBUI_URL} (HTTP ${OW_CODE})"
+else
+  log_info "Open WebUI port 3080 not answering (start with: docker compose up -d open-webui)"
+fi
+
 echo ""
 echo "================================================================================"
 echo -e "${BOLD}VERIFICATION SUMMARY:${NC}"

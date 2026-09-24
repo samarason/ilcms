@@ -126,6 +126,7 @@ services:
       - KEYCLOAK_REALM=ilcms
       - KEYCLOAK_CLIENT_ID=ilcms-web
       - DATABASE_URL=postgresql://ilcms_user:ilcms_secret_password@postgres:5432/ilcms_db
+      - OPEN_WEBUI_URL=http://localhost:3080
     deploy:
       resources:
         limits:
@@ -134,6 +135,36 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
+
+  # 5. Open WebUI (100% Air-Gapped Browser Interface for Ollama)
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: ilcms-open-webui
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3080:8080"
+    networks:
+      - ilcms_net
+      - ilcms_ai_isolated_net
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_NAME=ILCMS Legal AI (Open WebUI)
+      - WEBUI_AUTH=false
+      - DATA_DIR=/app/backend/data
+      - DEFAULT_MODELS=gemma2:9b
+      - ENV=prod
+    volumes:
+      - open_webui_data:/app/backend/data
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
 networks:
   ilcms_net:
@@ -147,4 +178,6 @@ volumes:
   ollama_data:
     driver: local
   postgres_data:
+    driver: local
+  open_webui_data:
     driver: local

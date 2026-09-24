@@ -8,4 +8,5 @@ resources:
   - postgres-pgvector.yaml
   - keycloak.yaml
   - ollama.yaml
+  - open-webui.yaml
   - app.yaml

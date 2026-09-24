@@ -8,6 +8,7 @@ import { LegalCompareModal } from "@/components/LegalCompareModal";
 import { LegalDraftingView } from "@/components/LegalDraftingView";
 import { AdminConsoleModal } from "@/components/AdminConsoleModal";
 import { ExampleDocsPickerModal } from "@/components/ExampleDocsPickerModal";
+import { OpenWebUIModal } from "@/components/OpenWebUIModal";
 import { PRE_SEEDED_STATUTES } from "@/lib/legal-knowledge";
 import { evaluateCaseDeadlineUrgency, getDeadlineHoursRemaining } from "@/lib/deadline-urgency";
 
@@ -35,6 +36,7 @@ export default function Dashboard() {
   const [systemStatus, setSystemStatus] = useState<any>(null);
   const [showInfraModal, setShowInfraModal] = useState(false);
   const [showAdminConsoleModal, setShowAdminConsoleModal] = useState(false);
+  const [showOpenWebUIModal, setShowOpenWebUIModal] = useState(false);
 
   const [chatMessages, setChatMessages] = useState<any[]>([
     {
@@ -962,6 +964,28 @@ export default function Dashboard() {
             }}
           >
             ⚙️ Innviðir
+          </button>
+          <button
+            id="btn-open-webui-launcher"
+            onClick={() => setShowOpenWebUIModal(true)}
+            style={{
+              padding: "4px 10px",
+              background: "linear-gradient(135deg, #065f46, #059669)",
+              color: "#ffffff",
+              border: "1px solid #34d399",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
+              boxShadow: "0 0 8px rgba(52, 211, 153, 0.25)",
+            }}
+            title="Opna Open WebUI (Vafraspjall & Ollama aðgangur á porti 3080)"
+          >
+            <span>💬</span>
+            <span>Open WebUI</span>
           </button>
           <button
             id="btn-header-logout"
@@ -3266,6 +3290,27 @@ export default function Dashboard() {
                   Hreinsa
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => setShowOpenWebUIModal(true)}
+                title="Opna Open WebUI (Vafraspjall á porti 3080 eða chat.ilcms.local)"
+                style={{
+                  fontSize: "0.7rem",
+                  background: "#ecfdf5",
+                  color: "#047857",
+                  border: "1px solid #a7f3d0",
+                  borderRadius: "4px",
+                  padding: "3px 8px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  fontWeight: 600,
+                }}
+              >
+                <span>💬</span>
+                <span>Open WebUI</span>
+              </button>
               <span
                 style={{
                   fontSize: "0.7rem",
@@ -3796,11 +3841,30 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              {/* Service 4: Open WebUI */}
+              <div style={{ padding: "12px", background: "#f0fdf4", borderRadius: "8px", border: "1px solid #86efac" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                  <strong style={{ fontSize: "0.92rem", color: "#14532d" }}>💬 Open WebUI (Vafraspjall & Skjalagreining)</strong>
+                  <span style={{ fontSize: "0.72rem", background: "#dcfce7", color: "#15803d", padding: "2px 8px", borderRadius: "12px", fontWeight: 600 }}>
+                    100% Air-Gapped / Port 3080
+                  </span>
+                </div>
+                <div style={{ fontSize: "0.8rem", color: "#166534", lineHeight: 1.5 }}>
+                  Fullbúið vafraviðmót sem veitir lögfræðingum og dómurum beinan aðgang að staðbundnu Ollama mál- og vigralíkunum (Gemma 2 9B / nomic-embed-text) í gegnum vafra með drag-and-drop skjalagreiningu.
+                </div>
+                <div style={{ marginTop: "8px", fontSize: "0.78rem", background: "#ffffff", padding: "8px", borderRadius: "4px", border: "1px solid #bbf7d0" }}>
+                  <div>• <strong>Docker tenging:</strong> <code>http://localhost:3080</code> (tengist innra Ollama <code>http://ollama:11434</code>)</div>
+                  <div>• <strong>Kubernetes (K3s):</strong> <code>http://chat.ilcms.local</code> eða <code>http://ai.ilcms.local</code> (Traefik Ingress)</div>
+                  <div>• <strong>Trúnaðaröryggi:</strong> Keyrir á einangruðu brúarneti með núll gagnaútflæði.</div>
+                </div>
+              </div>
+
               {/* Hardware RAM Budget Summary */}
               <div style={{ padding: "12px", background: "#fafafa", borderRadius: "8px", border: "1px solid #e5e5e5" }}>
                 <strong style={{ fontSize: "0.88rem", color: "#171717" }}>📊 Vinnsluminnisbókhald á Fartölvu (16GB – 20GB):</strong>
                 <div style={{ marginTop: "6px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", fontSize: "0.78rem", color: "#525252" }}>
                   <div>• Air-Gapped LLM (Gemma 2 9B): <strong>~7 GB</strong></div>
+                  <div>• Open WebUI Viðmót: <strong>~0.3 GB</strong></div>
                   <div>• Keycloak OIDC: <strong>~0.8 GB</strong></div>
                   <div>• PostgreSQL & pgvector: <strong>~1.5 GB</strong></div>
                   <div>• ILCMS Vefkerfi: <strong>~0.8 GB</strong></div>
@@ -3844,6 +3908,12 @@ export default function Dashboard() {
         currentCaseId={selectedCaseId}
         cases={cases}
         onSuccess={handleExamplePickerSuccess}
+      />
+
+      {/* Open WebUI modal */}
+      <OpenWebUIModal
+        isOpen={showOpenWebUIModal}
+        onClose={() => setShowOpenWebUIModal(false)}
       />
 
       {/* ATHUGASEMDIR (DOCUMENT NOTES) MODAL */}

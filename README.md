@@ -82,7 +82,8 @@ chmod +x install.sh scripts/*.sh
 ./install.sh --ai-only # Configures and caches only the 100% air-gapped Icelandic AI model
 ```
 
-- **Web Application:** `http://localhost:3000`
+- **Web Application:** `http://localhost:3000` (or `http://ilcms.local`)
+- **Open WebUI (Browser AI):** `http://localhost:3080` (Docker) or `http://chat.ilcms.local` (K3s Ingress)
 - **Air-Gapped AI Subsystem:** `http://127.0.0.1:11434` (Strict loopback / zero internet egress)
 - **Test Credentials:** `lawyer@ilcms.is` / `ilcms_password_2026`
 
@@ -92,6 +93,44 @@ After running `./install.sh`, verify that all services and air-gap network bound
 ```bash
 chmod +x verify-airgap.sh
 ./verify-airgap.sh
+```
+
+---
+
+## Open WebUI Integration (Browser AI Interface to Ollama)
+
+Open WebUI (`ghcr.io/open-webui/open-webui:main`) is integrated into both the **Docker Compose** and **Kubernetes (K3s)** configurations to provide attorneys, judges, and administrative staff with a modern browser interface for chatting with local Ollama models and analyzing case documents.
+
+### Key Capabilities:
+- **100% Air-Gapped Operation:** Open WebUI communicates exclusively with Ollama over internal bridge / cluster DNS (`http://ollama:11434`). Zero outbound internet egress is permitted.
+- **Document Drag & Drop (RAG):** Legal briefs, pleadings, agreements, and expert opinions (PDF, DOCX, TXT) can be dragged directly into the chat interface for local document-grounded analysis.
+- **Native Browser Access:**
+  - **Docker Compose:** Accessible at `http://localhost:3080` (pre-bound to loopback).
+  - **Kubernetes (K3s):** Routed through Traefik Ingress at `http://chat.ilcms.local` (or direct `kubectl port-forward svc/open-webui -n ilcms 3080:8080`).
+- **One-Click In-App Launcher:** In the ILCMS web application, click the **💬 Open WebUI** button in the top navigation bar or the **🚀 Open WebUI** button in the AI Assistant pane to launch or configure connection settings.
+- **Optional Keycloak SSO:** Configurable with Keycloak OIDC (`ilcms` realm) for unified single sign-on across the firm.
+
+### Docker Compose Commands:
+```bash
+# Start Open WebUI alongside Ollama and ILCMS
+docker compose up -d open-webui ollama
+
+# Open in your browser:
+# http://localhost:3080
+```
+
+### Kubernetes (K3s) Commands:
+```bash
+# Apply declarative manifests including Open WebUI
+kubectl apply -k deploy/k8s/
+
+# Verify Open WebUI pod and service
+kubectl get pods -n ilcms -l app=open-webui
+kubectl get svc -n ilcms open-webui
+
+# If using /etc/hosts, add:
+# 127.0.0.1 ilcms.local auth.ilcms.local chat.ilcms.local
+# Then navigate to: http://chat.ilcms.local
 ```
 
 ---
@@ -434,6 +473,7 @@ Below are high-resolution screenshots illustrating the end-to-end legal workflow
 ## Technology Stack
 
 - **Frontend & Server API:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS.
+- **Browser AI Interface:** Open WebUI (Local browser-based chat & document intelligence).
 - **On-Device AI Inference:** Ollama 0.5.7 with fine-tuned **Gemma 2 9B Instruct** & **nomic-embed-text** (100% Air-Gapped / Zero Egress).
 - **Relational & Vector Database:** PostgreSQL 16 Alpine with `pgvector` extension and HNSW indexing.
 - **Identity Provider:** Keycloak 24 (Quarkus runtime) with OIDC authentication.
