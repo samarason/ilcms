@@ -43,6 +43,10 @@ spec:
             - containerPort: 8080
               name: http
           env:
+            - name: PORT
+              value: "8080"
+            - name: WEBUI_PORT
+              value: "8080"
             - name: OLLAMA_BASE_URL
               value: "http://ollama.ilcms.svc.cluster.local:11434"
             - name: WEBUI_NAME
@@ -55,28 +59,58 @@ spec:
               value: "gemma2:9b"
             - name: ENV
               value: "prod"
+            # 100% Air-Gapped / Offline Flags (Prevents HuggingFace & update network timeouts)
+            - name: OFFLINE_MODE
+              value: "true"
+            - name: HF_HUB_OFFLINE
+              value: "1"
+            - name: RAG_EMBEDDING_MODEL_AUTO_UPDATE
+              value: "false"
+            - name: RAG_RERANKING_MODEL_AUTO_UPDATE
+              value: "false"
+            - name: RAG_EMBEDDING_ENGINE
+              value: "ollama"
+            - name: RAG_OLLAMA_BASE_URL
+              value: "http://ollama.ilcms.svc.cluster.local:11434"
+            - name: RAG_EMBEDDING_MODEL
+              value: "nomic-embed-text"
+            - name: ENABLE_COMMUNITY_SHARING
+              value: "false"
+            - name: WEBUI_URL
+              value: "http://chat.ilcms.local"
           resources:
             requests:
-              cpu: "250m"
-              memory: "512Mi"
+              cpu: "50m"
+              memory: "256Mi"
             limits:
               cpu: "1500m"
               memory: "1536Mi"
           volumeMounts:
             - name: open-webui-storage
               mountPath: /app/backend/data
-          readinessProbe:
+          # Startup probe allows Open WebUI up to 165 seconds to run initial database migrations
+          # and initialize local Chroma vector store before liveness / readiness probes start.
+          startupProbe:
             httpGet:
               path: /health
               port: 8080
             initialDelaySeconds: 15
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
             periodSeconds: 10
+            failureThreshold: 3
           livenessProbe:
             httpGet:
               path: /health
               port: 8080
-            initialDelaySeconds: 30
-            periodSeconds: 20
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
       volumes:
         - name: open-webui-storage
           persistentVolumeClaim:
