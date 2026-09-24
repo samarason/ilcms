@@ -1,8 +1,6 @@
 {
   "name": "ilcms",
-  "description": "Imported from GitHub: samarason/ilcms",
+  "description": "ILCMS - Icelandic Legal Case Management System (Málastjórnunarkerfi) for case tracking, statutory deadlines, legal documents, and billing.",
   "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "majorCapabilities": []
 }
