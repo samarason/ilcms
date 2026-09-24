@@ -181,6 +181,7 @@ export function LegalCompareModal({
         zIndex: 9999,
         padding: "16px",
         boxSizing: "border-box",
+        overflowY: "auto",
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -435,6 +436,7 @@ export function LegalCompareModal({
             gridTemplateColumns: "1fr 1fr",
             gap: "20px",
             backgroundColor: "#f8fafc",
+            minHeight: 0,
           }}
         >
           {/* COLUMN A (LEFT) */}
@@ -448,6 +450,7 @@ export function LegalCompareModal({
               border: itemA?.type === "precedent" ? "1px solid #bfdbfe" : "1px solid #bbf7d0",
               boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
               overflow: "hidden",
+              minHeight: 0,
             }}
           >
             {/* Header / Selector for A */}
@@ -567,6 +570,7 @@ export function LegalCompareModal({
               border: itemB?.type === "precedent" ? "1px solid #bfdbfe" : "1px solid #bbf7d0",
               boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
               overflow: "hidden",
+              minHeight: 0,
             }}
           >
             {/* Header / Selector for B */}

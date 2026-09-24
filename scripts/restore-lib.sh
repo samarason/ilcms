@@ -13,6 +13,458 @@ cd "${PROJECT_ROOT}"
 
 mkdir -p src/lib
 
+if [ ! -f "src/lib/admin-store.ts" ]; then
+    echo "Restoring src/lib/admin-store.ts..."
+    cat <<'EOF' > src/lib/admin-store.ts
+export interface SystemService {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string;
+  category: "web" | "database" | "iam" | "ai" | "network" | string;
+  status: "running" | "stopped" | "degraded" | string;
+  cpuPercent: number;
+  memoryMb: number;
+  uptime: string;
+  port: number;
+  endpoint: string;
+  egressPolicy: string;
+  version: string;
+  lastRestart: string;
+  containerId: string;
+}
+
+export interface SystemResources {
+  cpu: {
+    totalCores: number;
+    usagePercent: number;
+    loadAverage: number[];
+    model: string;
+  };
+  memory: {
+    totalMb: number;
+    usedMb: number;
+    freeMb: number;
+    buffersMb: number;
+  };
+  disk: {
+    totalGb: number;
+    usedGb: number;
+    freeGb: number;
+    mountPoint: string;
+    breakdown: {
+      aiModelsGb: number;
+      postgresDbGb: number;
+      caseDocumentsGb: number;
+      systemOsGb: number;
+    };
+  };
+  network: {
+    wanEgressBytes: number;
+    isAirgapEnforced: boolean;
+    activeSockets: number;
+    loopbackOnly: boolean;
+  };
+  systemTemperatureC: number;
+  kernelVersion: string;
+}
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  username: string;
+  role: "ADMIN" | "LAWYER" | "JUDGE" | "PARALEGAL" | string;
+  enabled: boolean;
+  mfaEnabled: boolean;
+  createdDate: string;
+  lastLogin: string;
+  keycloakSub: string;
+  department: string;
+}
+
+export interface AuditEvent {
+  id: string;
+  timestamp: string;
+  userName: string;
+  userEmail: string;
+  role: string;
+  action: string;
+  category: string;
+  target: string;
+  ipAddress: string;
+  status: "SUCCESS" | "FAILED" | string;
+  details: string;
+}
+
+export interface SystemLogEntry {
+  id: string;
+  timestamp: string;
+  service: string;
+  level: "INFO" | "WARN" | "ERROR" | "DEBUG" | string;
+  message: string;
+}
+
+export const INITIAL_SERVICES: SystemService[] = [
+  {
+    id: "ilcms-web",
+    name: "ilcms-web",
+    displayName: "ILCMS Vefþjónusta & Viðmót",
+    description: "Next.js 15 (App Router), React 19, TypeScript og lögfræðieiningar.",
+    category: "web",
+    status: "running",
+    cpuPercent: 3.2,
+    memoryMb: 480,
+    uptime: "3d 14h 22m",
+    port: 3000,
+    endpoint: "http://localhost:3000",
+    egressPolicy: "Staðbundin beining (Local loopback)",
+    version: "2.0.0-PROD",
+    lastRestart: "2026-09-17T08:30:00Z",
+    containerId: "c7e1f8a92b01",
+  },
+  {
+    id: "ilcms-postgres",
+    name: "ilcms-postgres",
+    displayName: "PostgreSQL 16 + pgvector",
+    description: "Vensla- og vigragagnagrunnur fyrir mál, tímaskráningar og HNSW samhengisleit.",
+    category: "database",
+    status: "running",
+    cpuPercent: 2.8,
+    memoryMb: 1120,
+    uptime: "3d 14h 25m",
+    port: 5432,
+    endpoint: "postgresql://127.0.0.1:5432/ilcms_db",
+    egressPolicy: "Engin ytri tenging (Local Socket Only)",
+    version: "16.2-alpine (pgvector 0.7.0)",
+    lastRestart: "2026-09-17T08:28:00Z",
+    containerId: "b4a3901cd99e",
+  },
+  {
+    id: "ilcms-keycloak",
+    name: "ilcms-keycloak",
+    displayName: "Keycloak 24 OIDC IAM (Quarkus)",
+    description: "Miðlæg auðkenning, hlutverkaskipting (RBAC) og öryggisstjórnun.",
+    category: "iam",
+    status: "running",
+    cpuPercent: 1.5,
+    memoryMb: 850,
+    uptime: "3d 14h 24m",
+    port: 8080,
+    endpoint: "http://127.0.0.1:8080/realms/ilcms",
+    egressPolicy: "Staðbundið OIDC hlið (Localhost)",
+    version: "24.0.2 (Quarkus Runtime)",
+    lastRestart: "2026-09-17T08:29:00Z",
+    containerId: "f9018e227a11",
+  },
+  {
+    id: "ilcms-ollama",
+    name: "ilcms-ollama",
+    displayName: "100% Air-Gapped Ollama AI (Gemma 2 9B)",
+    description: "Staðbundið íslenskt lögfræðimálíkan og nomic-embed-text vigragerð án nettengingar.",
+    category: "ai",
+    status: "running",
+    cpuPercent: 12.4,
+    memoryMb: 6140,
+    uptime: "3d 14h 26m",
+    port: 11434,
+    endpoint: "http://127.0.0.1:11434",
+    egressPolicy: "100% AIR-GAPPED: Zero Outbound WAN Egress (Kernel Blocked)",
+    version: "0.5.7 (Gemma 2 9B Instruct)",
+    lastRestart: "2026-09-17T08:27:00Z",
+    containerId: "a127ff041189",
+  },
+  {
+    id: "traefik-ingress",
+    name: "traefik-ingress",
+    displayName: "Traefik Ingress & Netbeining",
+    description: "Öryggissía og beining fyrir ilcms.local og auth.ilcms.local.",
+    category: "network",
+    status: "running",
+    cpuPercent: 0.6,
+    memoryMb: 95,
+    uptime: "3d 14h 26m",
+    port: 80,
+    endpoint: "http://ilcms.local",
+    egressPolicy: "Staðbundið K3s / Docker brúarnet",
+    version: "v3.0.1",
+    lastRestart: "2026-09-17T08:27:00Z",
+    containerId: "d0943ba8112c",
+  },
+];
+
+export const INITIAL_RESOURCES: SystemResources = {
+  cpu: {
+    totalCores: 8,
+    usagePercent: 21.3,
+    loadAverage: [0.62, 0.55, 0.48],
+    model: "AMD Ryzen 7 PRO / Apple Silicon / Intel Core i7 (8 Cores)",
+  },
+  memory: {
+    totalMb: 20480,
+    usedMb: 8685,
+    freeMb: 11795,
+    buffersMb: 2340,
+  },
+  disk: {
+    totalGb: 300,
+    usedGb: 48.4,
+    freeGb: 251.6,
+    mountPoint: "/var/lib/ilcms",
+    breakdown: {
+      aiModelsGb: 7.4,
+      postgresDbGb: 3.8,
+      caseDocumentsGb: 2.2,
+      systemOsGb: 35,
+    },
+  },
+  network: {
+    wanEgressBytes: 0,
+    isAirgapEnforced: true,
+    activeSockets: 24,
+    loopbackOnly: true,
+  },
+  systemTemperatureC: 41.5,
+  kernelVersion: "Linux 6.8.0-laptop-airgap (x86_64)",
+};
+
+export const INITIAL_USERS: AdminUser[] = [
+  {
+    id: "usr-admin-01",
+    name: "Kerfisstjóri ILCMS",
+    email: "admin@ilcms.is",
+    username: "admin",
+    role: "ADMIN",
+    enabled: true,
+    mfaEnabled: true,
+    createdDate: "2026-01-10",
+    lastLogin: "2026-09-20 12:08:14",
+    keycloakSub: "kc-sub-8891-admin",
+    department: "Upplýsingatæknideild & Öryggisstjórnun",
+  },
+  {
+    id: "usr-lawyer-01",
+    name: "Guðrún Sigurðardóttir hrl.",
+    email: "gudrun@ilcms.is",
+    username: "gudrun",
+    role: "LAWYER",
+    enabled: true,
+    mfaEnabled: true,
+    createdDate: "2026-01-15",
+    lastLogin: "2026-09-20 11:42:05",
+    keycloakSub: "kc-sub-1022-gudrun",
+    department: "Málflutningur & Einkamálaréttur",
+  },
+  {
+    id: "usr-judge-01",
+    name: "Jón Þórðarson héraðsdómari",
+    email: "jon.thordarson@heradsdomstolar.is",
+    username: "jon_judge",
+    role: "JUDGE",
+    enabled: true,
+    mfaEnabled: true,
+    createdDate: "2026-02-01",
+    lastLogin: "2026-09-19 16:30:22",
+    keycloakSub: "kc-sub-4091-jon",
+    department: "Héraðsdómur Reykjavíkur (Dómsdeild)",
+  },
+  {
+    id: "usr-paralegal-01",
+    name: "Ásta Einarsdóttir lögfræðinemi",
+    email: "asta@ilcms.is",
+    username: "asta",
+    role: "PARALEGAL",
+    enabled: true,
+    mfaEnabled: false,
+    createdDate: "2026-03-12",
+    lastLogin: "2026-09-20 09:15:30",
+    keycloakSub: "kc-sub-6110-asta",
+    department: "Gagnaöflun & Réttarfarsrannsóknir",
+  },
+  {
+    id: "usr-lawyer-02",
+    name: "Arnar Stefánsson hrl.",
+    email: "arnar@juris.is",
+    username: "arnar",
+    role: "LAWYER",
+    enabled: true,
+    mfaEnabled: true,
+    createdDate: "2026-04-05",
+    lastLogin: "2026-09-18 14:20:11",
+    keycloakSub: "kc-sub-7712-arnar",
+    department: "Félagaréttur & Samningaréttur",
+  },
+];
+
+export const INITIAL_AUDIT_EVENTS: AuditEvent[] = [
+  {
+    id: "aud-001",
+    timestamp: "2026-09-20T12:08:14Z",
+    userName: "Kerfisstjóri ILCMS",
+    userEmail: "admin@ilcms.is",
+    role: "ADMIN",
+    action: "Innskráning í Kerfisstjórn",
+    category: "ADMIN",
+    target: "Kerfisyfirsýn (Dashboard)",
+    ipAddress: "127.0.0.1",
+    status: "SUCCESS",
+    details: "Stjórnborð opnað með fullum kerfisstjóraheimildum (RBAC: ADMIN).",
+  },
+  {
+    id: "aud-002",
+    timestamp: "2026-09-20T11:45:30Z",
+    userName: "Guðrún Sigurðardóttir hrl.",
+    userEmail: "gudrun@ilcms.is",
+    role: "LAWYER",
+    action: "Útflutningur Málsgagnasafns",
+    category: "BUNDLE",
+    target: "Mál E-4120/2026 (Almenn krafa ehf. gegn Bygging hf.)",
+    ipAddress: "127.0.0.1",
+    status: "SUCCESS",
+    details: "Sótti opinbert málsgagnasafn á PDF formi skv. reglum dómstólasýslunnar nr. 1/2020.",
+  },
+  {
+    id: "aud-003",
+    timestamp: "2026-09-20T11:42:10Z",
+    userName: "Guðrún Sigurðardóttir hrl.",
+    userEmail: "gudrun@ilcms.is",
+    role: "LAWYER",
+    action: "Air-Gapped AI Stefnumótun",
+    category: "AI_INFERENCE",
+    target: "Mál E-4120/2026 (Gemma 2 9B)",
+    ipAddress: "127.0.0.1",
+    status: "SUCCESS",
+    details: "Keyrði staðbundið dómsskjala-frumvarp um vanefndir verktaka. 0 bytes send á ytri net.",
+  },
+  {
+    id: "aud-004",
+    timestamp: "2026-09-20T10:15:00Z",
+    userName: "Jón Þórðarson héraðsdómari",
+    userEmail: "jon.thordarson@heradsdomstolar.is",
+    role: "JUDGE",
+    action: "Skoðun Dómaskjala",
+    category: "DOCUMENT",
+    target: "Mál E-4120/2026 - Skjal D-1 (Verksamningur)",
+    ipAddress: "127.0.0.1",
+    status: "SUCCESS",
+    details: "Dómari opnaði málsskjöl og yfirfór dómkröfur stefnanda.",
+  },
+  {
+    id: "aud-005",
+    timestamp: "2026-09-20T09:30:15Z",
+    userName: "Ásta Einarsdóttir lögfræðinemi",
+    userEmail: "asta@ilcms.is",
+    role: "PARALEGAL",
+    action: "Skráning Tímaeiningar",
+    category: "BILLING",
+    target: "Mál E-4120/2026 (Gagnaöflun)",
+    ipAddress: "127.0.0.1",
+    status: "SUCCESS",
+    details: "Skráði 2.5 klst. í gagnaöflun og dómafordæmisrannsókn í Hrd. 120/2021.",
+  },
+  {
+    id: "aud-006",
+    timestamp: "2026-09-19T18:04:22Z",
+    userName: "Óþekktur notandi",
+    userEmail: "hacker@external.net",
+    role: "LAWYER",
+    action: "Innskráningartilraun",
+    category: "AUTH",
+    target: "Keycloak OIDC Endpoint",
+    ipAddress: "192.168.1.105",
+    status: "FAILED",
+    details: "Innskráning hafnað: Ógilt lykilorð og IP-tala utan staðbundins öryggishrings.",
+  },
+  {
+    id: "aud-007",
+    timestamp: "2026-09-19T14:10:00Z",
+    userName: "Kerfisstjóri ILCMS",
+    userEmail: "admin@ilcms.is",
+    role: "ADMIN",
+    action: "Uppfærsla Hlutverka (RBAC)",
+    category: "ADMIN",
+    target: "Notandi: Ásta Einarsdóttir (asta)",
+    ipAddress: "127.0.0.1",
+    status: "SUCCESS",
+    details: "Veitti tímabundinn aðgang að gagnaútflutningi í Keycloak realm 'ilcms'.",
+  },
+];
+
+export const INITIAL_LOGS: SystemLogEntry[] = [
+  {
+    id: "log-001",
+    timestamp: "2026-09-20T12:09:44.102Z",
+    service: "ilcms-ollama",
+    level: "INFO",
+    message: "Ollama inference server: Request context 8192 tokens evaluated in 412ms. Model: gemma2:9b-instruct-q4_K_M (100% on-device, WAN egress: 0 bytes).",
+  },
+  {
+    id: "log-002",
+    timestamp: "2026-09-20T12:09:40.854Z",
+    service: "ilcms-postgres",
+    level: "INFO",
+    message: "pgvector HNSW index scan: matched 5 nearest statutory chunks for query vector [768d] in 1.4ms (distance metric: cosine).",
+  },
+  {
+    id: "log-003",
+    timestamp: "2026-09-20T12:09:35.210Z",
+    service: "ilcms-web",
+    level: "INFO",
+    message: "GET /api/v1/cases/case-01/documents 200 OK (duration: 8ms, client: 127.0.0.1)",
+  },
+  {
+    id: "log-004",
+    timestamp: "2026-09-20T12:08:14.992Z",
+    service: "ilcms-keycloak",
+    level: "INFO",
+    message: "OIDC Login Success: user 'admin@ilcms.is' realm 'ilcms' client 'ilcms-web' (token TTL: 36000s, roles: [ADMIN]).",
+  },
+  {
+    id: "log-005",
+    timestamp: "2026-09-20T12:05:00.001Z",
+    service: "traefik-ingress",
+    level: "DEBUG",
+    message: "Traefik router 'ilcms-ingress': Host(`ilcms.local`) -> backend Service `ilcms-web:3000` healthy.",
+  },
+  {
+    id: "log-006",
+    timestamp: "2026-09-20T11:58:12.340Z",
+    service: "ilcms-ollama",
+    level: "INFO",
+    message: "GPU/Metal memory lock: Loaded 5.4GB layer weights into unified memory buffer. Zero external telemetry.",
+  },
+  {
+    id: "log-007",
+    timestamp: "2026-09-20T11:45:31.200Z",
+    service: "ilcms-web",
+    level: "INFO",
+    message: "CourtBundleBuilder: Compiled 42 pages PDF with bookmark tree and Table of Contents (Dómstólasýslan 1/2020).",
+  },
+  {
+    id: "log-008",
+    timestamp: "2026-09-20T11:30:10.012Z",
+    service: "ilcms-postgres",
+    level: "INFO",
+    message: "Checkpoint complete: 42 buffers written (0.4%), WAL segments synced to disk /var/lib/postgresql/data.",
+  },
+  {
+    id: "log-009",
+    timestamp: "2026-09-20T10:15:00.410Z",
+    service: "traefik-ingress",
+    level: "INFO",
+    message: "Airgap Firewall Check: Outbound WAN interface eth0 blocked for pod `ollama-0`. Egress dropped = 0 packets.",
+  },
+  {
+    id: "log-010",
+    timestamp: "2026-09-20T09:40:22.180Z",
+    service: "ilcms-keycloak",
+    level: "WARN",
+    message: "Token Refresh Warning: Client session 'asta' idle timeout warning emitted (refreshed successfully).",
+  },
+];
+EOF
+fi
+
 if [ ! -f "src/lib/auth.tsx" ]; then
     echo "Restoring src/lib/auth.tsx..."
     cat <<'EOF' > src/lib/auth.tsx
@@ -3340,6 +3792,16 @@ export async function generateLegalDraft(
   );
 }
 EOF
+fi
+
+# Verify that Next.js dependencies are present; install automatically if missing
+if [ ! -d "node_modules/next" ] || [ ! -e "node_modules/.bin/next" ]; then
+  echo "Node.js dependencies not found or incomplete. Installing via npm..."
+  if command -v npm >/dev/null 2>&1; then
+    npm install --include=dev --legacy-peer-deps || npm install --include=dev || true
+  elif command -v bun >/dev/null 2>&1; then
+    bun install || true
+  fi
 fi
 
 echo "Library files verification and restoration complete."

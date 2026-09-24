@@ -1027,7 +1027,11 @@ export function BillingManagementTab({
         )}
 
         {/* TIME TABLE */}
-        <div style={{ overflowX: "auto" }}>
+        <div
+          id="billing-time-entries-tree"
+          className="scrollable-tree"
+          style={{ overflowX: "auto", overflowY: "auto", maxHeight: "480px" }}
+        >
           {timeEntries.length === 0 ? (
             <div style={{ padding: "30px", textAlign: "center", color: "#94a3b8", fontSize: "0.88rem" }}>
               Engar tímafærslur hafa verið skráðar á þetta mál enn sem komið er.
@@ -1369,7 +1373,11 @@ export function BillingManagementTab({
         )}
 
         {/* EXPENSES TABLE */}
-        <div style={{ overflowX: "auto" }}>
+        <div
+          id="billing-expenses-tree"
+          className="scrollable-tree"
+          style={{ overflowX: "auto", overflowY: "auto", maxHeight: "480px" }}
+        >
           {expenses.length === 0 ? (
             <div style={{ padding: "30px", textAlign: "center", color: "#94a3b8", fontSize: "0.88rem" }}>
               Enginn útlagður kostnaður skráður.

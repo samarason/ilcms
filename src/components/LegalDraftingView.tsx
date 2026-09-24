@@ -578,7 +578,11 @@ export function LegalDraftingView({
             />
 
             {/* Statutes Checklist */}
-            <div style={{ maxHeight: "200px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px", paddingRight: "4px" }}>
+            <div
+              id="drafting-statutes-tree"
+              className="scrollable-tree"
+              style={{ maxHeight: "240px", overflowY: "auto", overflowX: "auto", display: "flex", flexDirection: "column", gap: "6px", paddingRight: "4px" }}
+            >
               {filteredStatutes.map((s) => {
                 const isSelected = selectedStatuteIds.includes(s.id);
                 return (
@@ -665,7 +669,11 @@ export function LegalDraftingView({
               Gervigreindin mun nota valin skjöl sem beint inntak til að draga upp málsatvik og raða upp sönnunargagnaskrá (IV. SÖNNUNARGÖGN):
             </p>
 
-            <div style={{ maxHeight: "180px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div
+              id="drafting-case-docs-tree"
+              className="scrollable-tree"
+              style={{ maxHeight: "200px", overflowY: "auto", overflowX: "auto", display: "flex", flexDirection: "column", gap: "6px", paddingRight: "4px" }}
+            >
               {caseDocs.length === 0 ? (
                 <div style={{ fontSize: "0.8rem", color: "#94a3b8", fontStyle: "italic", padding: "8px 0" }}>
                   Engin málsskjöl hafa verið skráð í þetta mál ennþá.
@@ -755,7 +763,11 @@ export function LegalDraftingView({
               </div>
             </div>
 
-            <div style={{ maxHeight: "160px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div
+              id="drafting-precedents-tree"
+              className="scrollable-tree"
+              style={{ maxHeight: "200px", overflowY: "auto", overflowX: "auto", display: "flex", flexDirection: "column", gap: "6px", paddingRight: "4px" }}
+            >
               {filteredPrecedents.map((p) => {
                 const isSelected = selectedPrecedentIds.includes(p.id);
                 return (

@@ -27,7 +27,7 @@ cd "${PROJECT_ROOT}"
 export PATH="${PROJECT_ROOT}/node_modules/.bin:${PATH}"
 
 APP_NAME="ilcms"
-APP_DISPLAY_NAME="ILCMS - Rafræn Lögmannsstofa"
+APP_DISPLAY_NAME="ILCMS - Málastjórnun"
 APP_DESCRIPTION="100% Air-Gapped Icelandic Legal Case Management and Court Bundle System"
 APP_VERSION="1.0.0"
 APP_AUTHOR="ILCMS Legal Tech <support@ilcms.is>"
@@ -138,21 +138,58 @@ mkdir -p "${OUTPUT_DIR}" "${STAGING_DIR}"
 echo "=== [1/6] Preparing Standalone Application Bundle ==="
 
 export PATH="${PROJECT_ROOT}/node_modules/.bin:${PATH}"
+# Verify that Next.js dependencies are installed; install automatically if missing
+if [ ! -d "${PROJECT_ROOT}/node_modules/next" ] || [ ! -e "${PROJECT_ROOT}/node_modules/.bin/next" ]; then
+  echo "==> Dependencies not found in node_modules. Installing dependencies..."
+  if command -v npm >/dev/null 2>&1; then
+    (cd "${PROJECT_ROOT}" && (npm install --include=dev --legacy-peer-deps || npm install --include=dev))
+  elif command -v bun >/dev/null 2>&1; then
+    (cd "${PROJECT_ROOT}" && bun install)
+  elif command -v pnpm >/dev/null 2>&1; then
+    (cd "${PROJECT_ROOT}" && pnpm install)
+  elif command -v yarn >/dev/null 2>&1; then
+    (cd "${PROJECT_ROOT}" && yarn install)
+  else
+    echo "Error: Next.js dependencies are missing and neither npm, bun, pnpm, nor yarn was found."
+    echo "Please install dependencies with 'npm install' and try again."
+    exit 1
+  fi
+fi
+
 export NODE_ENV="production"
 export NEXT_IGNORE_INCORRECT_LOCKFILE="1"
+
+# Ensure next binary is executable and symlinked if missing
+if [ -f "${PROJECT_ROOT}/node_modules/next/dist/bin/next" ]; then
+  mkdir -p "${PROJECT_ROOT}/node_modules/.bin"
+  if [ ! -e "${PROJECT_ROOT}/node_modules/.bin/next" ]; then
+    ln -sf "../next/dist/bin/next" "${PROJECT_ROOT}/node_modules/.bin/next"
+  fi
+  chmod +x "${PROJECT_ROOT}/node_modules/next/dist/bin/next" "${PROJECT_ROOT}/node_modules/.bin/next" 2>/dev/null || true
+fi
+
+# Ensure global PATH has a fallback if /usr/local/bin is writable
+if [ -w "/usr/local/bin" ] && [ ! -e "/usr/local/bin/next" ] && [ -f "${PROJECT_ROOT}/node_modules/next/dist/bin/next" ]; then
+  ln -sf "${PROJECT_ROOT}/node_modules/.bin/next" /usr/local/bin/next 2>/dev/null || true
+fi
 
 if [ -f ".next/standalone/server.js" ] && [ "$CLEAN_FIRST" = false ]; then
   echo "✓ Using existing production standalone bundle in .next/standalone."
 elif [ "$SKIP_NPM_BUILD" = false ]; then
   echo "Building Next.js application in standalone mode..."
   if command -v npm >/dev/null 2>&1; then
-    npm run build
+    NODE_ENV=production npm run build
   elif [ -x "${PROJECT_ROOT}/node_modules/.bin/next" ]; then
-    "${PROJECT_ROOT}/node_modules/.bin/next" build
+    NODE_ENV=production "${PROJECT_ROOT}/node_modules/.bin/next" build
+  elif [ -f "${PROJECT_ROOT}/node_modules/next/dist/bin/next" ]; then
+    NODE_ENV=production node "${PROJECT_ROOT}/node_modules/next/dist/bin/next" build
   elif command -v next >/dev/null 2>&1; then
-    next build
+    NODE_ENV=production next build
+  elif command -v npx >/dev/null 2>&1; then
+    NODE_ENV=production npx next build
   else
-    node "${PROJECT_ROOT}/node_modules/next/dist/bin/next" build
+    echo "Error: Next.js could not be located. Run 'npm install' first."
+    exit 1
   fi
 fi
 
@@ -205,43 +242,108 @@ echo "=== [2/6] Generating Desktop Brand & System Icons ==="
 ICON_DIR="${STAGING_DIR}/icons"
 mkdir -p "${ICON_DIR}"
 
-# Generate master high-resolution 512x512 icon
-python3 - << 'EOF'
+# First check if pre-generated icons exist in assets/icons/
+if [ -f "${PROJECT_ROOT}/assets/icons/ilcms-512.png" ]; then
+  echo "✓ Using bundled desktop icons from assets/icons/."
+  cp -a "${PROJECT_ROOT}/assets/icons/." "${ICON_DIR}/"
+fi
+
+# If 512x512 icon is still missing, generate it safely
+if [ ! -f "${ICON_DIR}/ilcms-512.png" ]; then
+  python3 - << 'EOF'
 import os
+import shutil
+import subprocess
+
+icon_png = ".build-desktop-staging/icons/ilcms-512.png"
+os.makedirs(os.path.dirname(icon_png), exist_ok=True)
+
+# 1. Try PIL (Pillow) if available
+has_pil = False
 try:
     from PIL import Image, ImageDraw, ImageFont
     has_pil = True
-except ImportError:
-    has_pil = False
-
-icon_png = ".build-desktop-staging/icons/ilcms-512.png"
-if not has_pil:
-    # Use ImageMagick convert
-    import subprocess
-    cmd = [
-        "convert", "-size", "512x512", "xc:none",
-        "-fill", "#0f172a", "-draw", "roundrectangle 24,24,488,488,64,64",
-        "-stroke", "#3b82f6", "-strokewidth", "8", "-fill", "#1e293b", "-draw", "roundrectangle 40,40,472,472,48,48",
-        "-stroke", "none", "-fill", "#f8fafc", "-font", "DejaVu-Sans-Bold", "-pointsize", "110", "-gravity", "center", "-draw", "text 0,-30 'ILCMS'",
-        "-fill", "#94a3b8", "-font", "DejaVu-Sans", "-pointsize", "36", "-gravity", "center", "-draw", "text 0,60 'LÖGMANNSSTOFA'",
-        "-fill", "#e2e8f0", "-font", "DejaVu-Sans-Bold", "-pointsize", "28", "-gravity", "center", "-draw", "text 0,110 '⚖ 100% AIR-GAPPED'",
-        icon_png
-    ]
-    subprocess.run(cmd, check=True)
-else:
     im = Image.new("RGBA", (512, 512), (0, 0, 0, 0))
     draw = ImageDraw.Draw(im)
     draw.rounded_rectangle([24, 24, 488, 488], radius=64, fill=(15, 23, 42, 255), outline=(59, 130, 246, 255), width=8)
     draw.rounded_rectangle([40, 40, 472, 472], radius=48, fill=(30, 41, 59, 255))
     im.save(icon_png)
-EOF
+except Exception:
+    has_pil = False
 
-# Generate .png sizes and .ico for Windows
-convert "${ICON_DIR}/ilcms-512.png" -resize 256x256 "${ICON_DIR}/ilcms-256.png"
-convert "${ICON_DIR}/ilcms-512.png" -resize 128x128 "${ICON_DIR}/ilcms-128.png"
-convert "${ICON_DIR}/ilcms-512.png" -resize 64x64   "${ICON_DIR}/ilcms-64.png"
-convert "${ICON_DIR}/ilcms-512.png" -resize 32x32   "${ICON_DIR}/ilcms-32.png"
-convert "${ICON_DIR}/ilcms-512.png" -define icon:auto-resize=256,128,64,48,32,16 "${ICON_DIR}/ilcms.ico"
+# 2. Try ImageMagick if PIL was not available or failed
+if not os.path.exists(icon_png):
+    conv_bin = shutil.which("magick") or shutil.which("convert")
+    if conv_bin:
+        cmd = [
+            conv_bin, "-size", "512x512", "xc:none",
+            "-fill", "#0f172a", "-draw", "roundrectangle 24,24,488,488,64,64",
+            "-stroke", "#3b82f6", "-strokewidth", "8", "-fill", "#1e293b", "-draw", "roundrectangle 40,40,472,472,48,48",
+            icon_png
+        ]
+        try:
+            subprocess.run(cmd, check=True)
+        except Exception as e:
+            print(f"Warning: ImageMagick icon generation failed: {e}")
+
+# 3. Minimal fallback: write a valid 1x1 or simple PNG if still missing
+if not os.path.exists(icon_png):
+    # Minimal 1x1 transparent PNG payload
+    import base64
+    tiny_png = b'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+    with open(icon_png, "wb") as f:
+        f.write(base64.b64decode(tiny_png))
+EOF
+fi
+
+# Helper function to resize icons safely across macOS (sips), Linux (magick/convert), or fallback
+resize_icon() {
+  local src="$1"
+  local size="$2"
+  local dest="$3"
+
+  if [ -f "$dest" ]; then
+    return 0
+  fi
+
+  if command -v sips >/dev/null 2>&1; then
+    # Native macOS image utility
+    cp "$src" "$dest"
+    sips -z "$size" "$size" "$dest" >/dev/null 2>&1 || true
+  elif command -v magick >/dev/null 2>&1; then
+    magick "$src" -resize "${size}x${size}" "$dest" 2>/dev/null || cp "$src" "$dest"
+  elif command -v convert >/dev/null 2>&1; then
+    convert "$src" -resize "${size}x${size}" "$dest" 2>/dev/null || cp "$src" "$dest"
+  else
+    cp "$src" "$dest"
+  fi
+}
+
+# Generate PNG sizes
+resize_icon "${ICON_DIR}/ilcms-512.png" 256 "${ICON_DIR}/ilcms-256.png"
+resize_icon "${ICON_DIR}/ilcms-512.png" 128 "${ICON_DIR}/ilcms-128.png"
+resize_icon "${ICON_DIR}/ilcms-512.png" 64  "${ICON_DIR}/ilcms-64.png"
+resize_icon "${ICON_DIR}/ilcms-512.png" 32  "${ICON_DIR}/ilcms-32.png"
+
+# Generate Windows .ico if not present
+if [ ! -f "${ICON_DIR}/ilcms.ico" ]; then
+  if [ -f "${PROJECT_ROOT}/assets/icons/ilcms.ico" ]; then
+    cp "${PROJECT_ROOT}/assets/icons/ilcms.ico" "${ICON_DIR}/ilcms.ico"
+  elif command -v magick >/dev/null 2>&1; then
+    magick "${ICON_DIR}/ilcms-512.png" -define icon:auto-resize=256,128,64,48,32,16 "${ICON_DIR}/ilcms.ico" 2>/dev/null || true
+  elif command -v convert >/dev/null 2>&1; then
+    convert "${ICON_DIR}/ilcms-512.png" -define icon:auto-resize=256,128,64,48,32,16 "${ICON_DIR}/ilcms.ico" 2>/dev/null || true
+  fi
+fi
+
+# Ensure standard ilcms.png alias exists
+if [ ! -f "${ICON_DIR}/ilcms.png" ]; then
+  if [ -f "${ICON_DIR}/ilcms-256.png" ]; then
+    cp "${ICON_DIR}/ilcms-256.png" "${ICON_DIR}/ilcms.png"
+  else
+    cp "${ICON_DIR}/ilcms-512.png" "${ICON_DIR}/ilcms.png"
+  fi
+fi
 
 echo "✓ Created icons: ilcms.png, ilcms.ico"
 
@@ -265,72 +367,7 @@ if [ "$BUILD_DEB" = true ]; then
   cp -a "${STANDALONE_DIR}/." "${DEB_ROOT}/opt/ilcms/"
 
   # Install launcher script
-  cat <<'EOF' > "${DEB_ROOT}/usr/bin/ilcms"
-#!/bin/bash
-# ILCMS Desktop Launcher for Linux
-APP_DIR="/opt/ilcms"
-PID_FILE="$HOME/.ilcms.pid"
-LOG_FILE="$HOME/.ilcms.log"
-PORT="${PORT:-3000}"
-
-is_running() {
-  if [ -f "$PID_FILE" ]; then
-    PID=$(cat "$PID_FILE" 2>/dev/null || echo "")
-    if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
-      return 0
-    fi
-  fi
-  if curl -s -m 1 "http://127.0.0.1:${PORT}" >/dev/null 2>&1; then
-    return 0
-  fi
-  return 1
-}
-
-case "${1:-}" in
-  stop)
-    if [ -f "$PID_FILE" ]; then
-      PID=$(cat "$PID_FILE")
-      kill "$PID" 2>/dev/null || true
-      rm -f "$PID_FILE"
-      echo "ILCMS stopped."
-    else
-      echo "ILCMS is not running."
-    fi
-    exit 0
-    ;;
-  status)
-    if is_running; then
-      echo "ILCMS is running on http://127.0.0.1:${PORT}"
-    else
-      echo "ILCMS is not running."
-    fi
-    exit 0
-    ;;
-  *)
-    if ! is_running; then
-      if ! command -v node >/dev/null 2>&1; then
-        echo "Error: Node.js (>= 18.0) is required to run ILCMS."
-        echo "Please install Node.js: https://nodejs.org or via 'sudo apt install nodejs'"
-        exit 1
-      fi
-      echo "Starting ILCMS server in background..."
-      cd "$APP_DIR"
-      NODE_ENV=production PORT="${PORT}" nohup node server.js > "$LOG_FILE" 2>&1 &
-      echo $! > "$PID_FILE"
-      for i in {1..20}; do
-        if curl -s -m 1 "http://127.0.0.1:${PORT}" >/dev/null 2>&1; then
-          break
-        fi
-        sleep 0.4
-      done
-    fi
-    echo "ILCMS is active: http://127.0.0.1:${PORT}"
-    if command -v xdg-open >/dev/null 2>&1; then
-      xdg-open "http://127.0.0.1:${PORT}" >/dev/null 2>&1 &
-    fi
-    ;;
-esac
-EOF
+  cp "${PROJECT_ROOT}/scripts/ilcms-linux-launcher.sh" "${DEB_ROOT}/usr/bin/ilcms"
   chmod +x "${DEB_ROOT}/usr/bin/ilcms"
 
   # Desktop Entry
@@ -365,6 +402,8 @@ User=root
 WorkingDirectory=/opt/ilcms
 Environment=NODE_ENV=production
 Environment=PORT=3000
+Environment=HOST=127.0.0.1
+Environment=HOSTNAME=127.0.0.1
 Environment=AIRGAP_MODE=true
 ExecStart=/usr/bin/node /opt/ilcms/server.js
 Restart=on-failure
@@ -447,6 +486,10 @@ if [ "$BUILD_RPM" = true ]; then
   PAYLOAD_TAR="${RPM_BUILD_DIR}/SOURCES/${APP_NAME}-${APP_VERSION}.tar.gz"
   tar -czf "${PAYLOAD_TAR}" -C "${STANDALONE_DIR}" .
 
+  # Copy launcher script and icon to SOURCES
+  cp "${PROJECT_ROOT}/scripts/ilcms-linux-launcher.sh" "${RPM_BUILD_DIR}/SOURCES/ilcms"
+  cp "${ICON_DIR}/ilcms-256.png" "${RPM_BUILD_DIR}/SOURCES/ilcms.png"
+
   # Create RPM spec file
   cat <<EOF > "${RPM_BUILD_DIR}/SPECS/ilcms.spec"
 Name:           ${APP_NAME}
@@ -456,9 +499,16 @@ Summary:        ${APP_DISPLAY_NAME}
 License:        ${APP_LICENSE}
 URL:            https://ilcms.is
 Source0:        %{name}-%{version}.tar.gz
+Source1:        ilcms
+Source2:        ilcms.png
 BuildArch:      x86_64
 Requires:       nodejs >= 18.0.0
 AutoReqProv:    no
+
+# Disable automatic debug symbol extraction on JavaScript standalone bundles
+%global         _enable_debug_packages 0
+%global         debug_package %{nil}
+%global         __os_install_post %{nil}
 
 %description
 ${APP_DESCRIPTION}.
@@ -476,11 +526,14 @@ mkdir -p %{buildroot}/usr/share/applications
 mkdir -p %{buildroot}/usr/share/pixmaps
 mkdir -p %{buildroot}/etc/systemd/system
 
-# Copy application files
-cp -a * %{buildroot}/opt/%{name}/
+# Copy application files (including hidden directories and files like .next and .env)
+cp -a ./. %{buildroot}/opt/%{name}/
 
 # Copy icon
-install -m 644 "${ICON_DIR}/ilcms-256.png" %{buildroot}/usr/share/pixmaps/ilcms.png
+install -m 644 %{SOURCE2} %{buildroot}/usr/share/pixmaps/ilcms.png
+
+# Copy launcher script
+install -m 755 %{SOURCE1} %{buildroot}/usr/bin/ilcms
 
 # Copy desktop file
 cat << 'DESK' > %{buildroot}/usr/share/applications/ilcms.desktop
@@ -494,75 +547,47 @@ Exec=ilcms
 Icon=ilcms
 Terminal=false
 Categories=Office;Legal;Utility;
+Keywords=Legal;Lawyer;Court;Iceland;Dómstóll;Málaskrá;
+StartupNotify=true
 DESK
 
-# Copy launcher script
-cat << 'LAUNCH' > %{buildroot}/usr/bin/ilcms
-#!/bin/bash
-APP_DIR="/opt/ilcms"
-PID_FILE="\$HOME/.ilcms.pid"
-LOG_FILE="\$HOME/.ilcms.log"
-PORT="\${PORT:-3000}"
+# Copy systemd unit file
+cat << 'SERVICE' > %{buildroot}/etc/systemd/system/ilcms.service
+[Unit]
+Description=ILCMS Legal Workspace Standalone Service
+After=network.target
 
-is_running() {
-  if [ -f "\$PID_FILE" ]; then
-    PID=\$(cat "\$PID_FILE" 2>/dev/null || echo "")
-    if [ -n "\$PID" ] && kill -0 "\$PID" 2>/dev/null; then
-      return 0
-    fi
-  fi
-  if curl -s -m 1 "http://127.0.0.1:\${PORT}" >/dev/null 2>&1; then
-    return 0
-  fi
-  return 1
-}
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/ilcms
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOST=127.0.0.1
+Environment=HOSTNAME=127.0.0.1
+Environment=AIRGAP_MODE=true
+ExecStart=/usr/bin/node /opt/ilcms/server.js
+Restart=on-failure
+RestartSec=5
 
-case "\${1:-}" in
-  stop)
-    if [ -f "\$PID_FILE" ]; then
-      kill \$(cat "\$PID_FILE") 2>/dev/null || true
-      rm -f "\$PID_FILE"
-      echo "ILCMS stopped."
-    fi
-    exit 0
-    ;;
-  status)
-    if is_running; then
-      echo "ILCMS is running on http://127.0.0.1:\${PORT}"
-    else
-      echo "ILCMS is not running."
-    fi
-    exit 0
-    ;;
-  *)
-    if ! is_running; then
-      cd "\$APP_DIR"
-      NODE_ENV=production PORT="\${PORT}" nohup node server.js > "\$LOG_FILE" 2>&1 &
-      echo \$! > "\$PID_FILE"
-      for i in {1..20}; do
-        if curl -s -m 1 "http://127.0.0.1:\${PORT}" >/dev/null 2>&1; then
-          break
-        fi
-        sleep 0.4
-      done
-    fi
-    if command -v xdg-open >/dev/null 2>&1; then
-      xdg-open "http://127.0.0.1:\${PORT}" >/dev/null 2>&1 &
-    fi
-    ;;
-esac
-LAUNCH
-chmod 755 %{buildroot}/usr/bin/ilcms
+[Install]
+WantedBy=multi-user.target
+SERVICE
 
 %files
+%defattr(-,root,root,-)
 /opt/%{name}
-/usr/bin/ilcms
+%attr(755,root,root) /usr/bin/ilcms
 /usr/share/applications/ilcms.desktop
 /usr/share/pixmaps/ilcms.png
+%config(noreplace) /etc/systemd/system/ilcms.service
 
 %post
 if command -v update-desktop-database >/dev/null 2>&1; then
   update-desktop-database -q /usr/share/applications || true
+fi
+if command -v restorecon >/dev/null 2>&1; then
+  restorecon -R /opt/%{name} /usr/bin/ilcms /usr/share/applications/ilcms.desktop /usr/share/pixmaps/ilcms.png 2>/dev/null || true
 fi
 
 %preun
@@ -574,8 +599,12 @@ fi
 rm -rf %{buildroot}
 EOF
 
-    rpmbuild --define "_topdir ${RPM_BUILD_DIR}" -bb "${RPM_BUILD_DIR}/SPECS/ilcms.spec" >/dev/null
+    rpmbuild --define "_topdir ${RPM_BUILD_DIR}" -bb "${RPM_BUILD_DIR}/SPECS/ilcms.spec"
     RPM_FILE=$(find "${RPM_BUILD_DIR}/RPMS" -name "*.rpm" | head -n 1)
+    if [ -z "${RPM_FILE}" ] || [ ! -f "${RPM_FILE}" ]; then
+      echo "Error: rpmbuild failed to produce an .rpm file."
+      exit 1
+    fi
     RPM_DEST="${OUTPUT_DIR}/ilcms-${APP_VERSION}-1.x86_64.rpm"
     cp "${RPM_FILE}" "${RPM_DEST}"
     RPM_SIZE=$(du -sh "${RPM_DEST}" | cut -f1)
@@ -606,76 +635,22 @@ if [ "$BUILD_MSI" = true ]; then
   # Copy application icon
   cp "${ICON_DIR}/ilcms.ico" "${MSI_STAGING}/ilcms.ico"
 
-  # Create Windows Console Batch Launcher
-  cat <<'EOF' > "${MSI_STAGING}/ILCMS.bat"
-@echo off
-setlocal
-cd /d "%~dp0"
-title ILCMS - Rafran Logmannsstofa
-echo =====================================================================
-echo    ILCMS - Rafran Logmannsstofa (100%% Air-Gapped Legal Workspace)
-echo =====================================================================
-echo.
+  # Create build version stamp for automatic update detection
+  echo "${APP_VERSION}-$(date +%Y%m%d%H%M%S)" > "${MSI_STAGING}/version.txt"
 
-where node >nul 2>&1
-if %ERRORLEVEL% neq 0 (
-    echo [ERROR] Node.js was not found in your system PATH.
-    echo Node.js 18+ LTS is required to run the local ILCMS server.
-    echo.
-    echo Press any key to open the official Node.js download page...
-    pause >nul
-    start https://nodejs.org/en/download/
-    exit /b 1
-)
+  # Copy Windows Launchers and Uninstaller from scripts directory
+  cp "${PROJECT_ROOT}/scripts/ILCMS.bat" "${MSI_STAGING}/ILCMS.bat"
+  cp "${PROJECT_ROOT}/scripts/ILCMS-Silent.vbs" "${MSI_STAGING}/ILCMS-Silent.vbs"
+  cp "${PROJECT_ROOT}/scripts/Uninstall-ILCMS.bat" "${MSI_STAGING}/Uninstall-ILCMS.bat"
 
-if not exist "app\server.js" (
-    echo Unpacking application assets on first launch...
-    powershell -NoProfile -Command "Expand-Archive -Path 'ilcms-app.zip' -DestinationPath 'app' -Force"
-)
-
-echo Checking server state...
-curl -s -m 1 http://127.0.0.1:3000 >nul 2>&1
-if %ERRORLEVEL% neq 0 (
-    echo Starting ILCMS local server on port 3000...
-    start /min cmd /c "cd /d "%~dp0app" && set NODE_ENV=production&& set PORT=3000&& set AIRGAP_MODE=true&& node server.js"
-    timeout /t 2 /nobreak >nul
-)
-
-echo Launching browser to http://127.0.0.1:3000 ...
-start "" "http://127.0.0.1:3000"
-exit /b 0
-EOF
-
-  # Create Windows Silent Background Launcher (VBScript to avoid flashing black command window)
-  cat <<'EOF' > "${MSI_STAGING}/ILCMS-Silent.vbs"
-Set WshShell = CreateObject("WScript.Shell")
-Set fso = CreateObject("Scripting.FileSystemObject")
-installDir = fso.GetParentFolderName(WScript.ScriptFullName)
-
-' Extract application bundle on first run
-If Not fso.FileExists(installDir & "\app\server.js") Then
-    WshShell.Run "powershell -NoProfile -Command ""Expand-Archive -Path '" & installDir & "\ilcms-app.zip' -DestinationPath '" & installDir & "\app' -Force""", 0, True
-End If
-
-' Start Node server in background if not already active
-WshShell.CurrentDirectory = installDir & "\app"
-WshShell.Environment("PROCESS")("NODE_ENV") = "production"
-WshShell.Environment("PROCESS")("PORT") = "3000"
-WshShell.Environment("PROCESS")("AIRGAP_MODE") = "true"
-
-WshShell.Run "cmd /c node server.js", 0, False
-
-WScript.Sleep 1500
-WshShell.Run "http://127.0.0.1:3000"
-EOF
-
-  # Create Windows Uninstaller helper
-  cat <<'EOF' > "${MSI_STAGING}/Uninstall-ILCMS.bat"
-@echo off
-echo Stopping any running ILCMS instances...
-taskkill /F /IM node.exe /FI "WINDOWTITLE eq ILCMS*" >nul 2>&1
-echo Done. Please use Windows Settings or Control Panel to complete uninstallation.
-EOF
+  # Convert Windows script files to native Windows CRLF line endings
+  python3 -c "
+for fname in ['${MSI_STAGING}/ILCMS.bat', '${MSI_STAGING}/ILCMS-Silent.vbs', '${MSI_STAGING}/Uninstall-ILCMS.bat', '${MSI_STAGING}/version.txt']:
+    with open(fname, 'rb') as f:
+        data = f.read().replace(b'\r\n', b'\n').replace(b'\n', b'\r\n')
+    with open(fname, 'wb') as f:
+        f.write(data)
+"
 
   # Create WiX Source File
   WXS_FILE="${MSI_STAGING}/ilcms.wxs"
@@ -705,6 +680,9 @@ EOF
         <Directory Id="INSTALLDIR" Name="ILCMS">
           <Component Id="CmpAppZip" Guid="A1A2A3A4-B1B2-C1C2-D1D2-E1E2E3E4E501">
             <File Id="FileAppZip" Source="ilcms-app.zip" KeyPath="yes" />
+          </Component>
+          <Component Id="CmpVersion" Guid="A1A2A3A4-B1B2-C1C2-D1D2-E1E2E3E4E506">
+            <File Id="FileVersion" Source="version.txt" KeyPath="yes" />
           </Component>
           <Component Id="CmpBat" Guid="A1A2A3A4-B1B2-C1C2-D1D2-E1E2E3E4E502">
             <File Id="FileBat" Source="ILCMS.bat" KeyPath="yes" />
@@ -751,6 +729,7 @@ EOF
 
     <Feature Id="MainFeature" Title="ILCMS Standalone Application" Level="1">
       <ComponentRef Id="CmpAppZip" />
+      <ComponentRef Id="CmpVersion" />
       <ComponentRef Id="CmpBat" />
       <ComponentRef Id="CmpVbs" />
       <ComponentRef Id="CmpIco" />
@@ -763,7 +742,7 @@ EOF
 EOF
 
     MSI_FILE="${OUTPUT_DIR}/ILCMS-Setup-${APP_VERSION}.msi"
-    (cd "${MSI_STAGING}" && wixl -o "${MSI_FILE}" ilcms.wxs)
+    (cd "${MSI_STAGING}" && wixl -a x64 -o "${MSI_FILE}" ilcms.wxs)
     MSI_SIZE=$(du -sh "${MSI_FILE}" | cut -f1)
     echo "✓ Built Windows MSI Installer: ${MSI_FILE} (${MSI_SIZE})"
   fi
@@ -793,6 +772,21 @@ if [ "$BUILD_DMG" = true ]; then
 
   # Copy AppIcon
   cp "${ICON_DIR}/ilcms-512.png" "${APP_BUNDLE}/Contents/Resources/AppIcon.png"
+  if command -v iconutil >/dev/null 2>&1 && command -v sips >/dev/null 2>&1; then
+    ICONSET="${DMG_STAGING}/AppIcon.iconset"
+    mkdir -p "${ICONSET}"
+    sips -z 16 16     "${ICON_DIR}/ilcms-512.png" --out "${ICONSET}/icon_16x16.png" >/dev/null 2>&1 || true
+    sips -z 32 32     "${ICON_DIR}/ilcms-512.png" --out "${ICONSET}/icon_16x16@2x.png" >/dev/null 2>&1 || true
+    sips -z 32 32     "${ICON_DIR}/ilcms-512.png" --out "${ICONSET}/icon_32x32.png" >/dev/null 2>&1 || true
+    sips -z 64 64     "${ICON_DIR}/ilcms-512.png" --out "${ICONSET}/icon_32x32@2x.png" >/dev/null 2>&1 || true
+    sips -z 128 128   "${ICON_DIR}/ilcms-512.png" --out "${ICONSET}/icon_128x128.png" >/dev/null 2>&1 || true
+    sips -z 256 256   "${ICON_DIR}/ilcms-512.png" --out "${ICONSET}/icon_128x128@2x.png" >/dev/null 2>&1 || true
+    sips -z 256 256   "${ICON_DIR}/ilcms-512.png" --out "${ICONSET}/icon_256x256.png" >/dev/null 2>&1 || true
+    sips -z 512 512   "${ICON_DIR}/ilcms-512.png" --out "${ICONSET}/icon_256x256@2x.png" >/dev/null 2>&1 || true
+    sips -z 512 512   "${ICON_DIR}/ilcms-512.png" --out "${ICONSET}/icon_512x512.png" >/dev/null 2>&1 || true
+    iconutil -c icns "${ICONSET}" -o "${APP_BUNDLE}/Contents/Resources/AppIcon.icns" >/dev/null 2>&1 || true
+    rm -rf "${ICONSET}"
+  fi
 
   # Create macOS Info.plist
   cat <<EOF > "${APP_BUNDLE}/Contents/Info.plist"
@@ -862,7 +856,7 @@ fi
 # Check if port is already active
 if ! curl -s -m 1 "http://127.0.0.1:${PORT}" >/dev/null 2>&1; then
   cd "$APP_DIR"
-  NODE_ENV=production PORT="${PORT}" AIRGAP_MODE=true nohup "$NODE_BIN" server.js > "$LOG_FILE" 2>&1 &
+  NODE_ENV=production PORT="${PORT}" HOSTNAME="127.0.0.1" HOST="127.0.0.1" AIRGAP_MODE=true nohup "$NODE_BIN" server.js > "$LOG_FILE" 2>&1 &
   echo $! > "$PID_FILE"
   for i in {1..20}; do
     if curl -s -m 1 "http://127.0.0.1:${PORT}" >/dev/null 2>&1; then

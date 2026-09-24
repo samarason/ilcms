@@ -37,7 +37,7 @@ The primary purpose of ILCMS is to provide Icelandic litigation attorneys and ju
 1. **Procedural Case Management (*Málaskrá*):** Structured tracking of civil actions (*einkamál*), fast-track proceedings (*flýtimeðferð skv. XIX. kafla eml.*), and appellate cases across all Icelandic jurisdictions (District Courts, Court of Appeal, and Supreme Court).
 2. **Statutory Deadline Engine (*Lögboðnir Dómsfrestir skv. lögum nr. 91/1991*):** Automated computation of service of summons (80. gr.), statement of defense (96. gr. og 101. gr.), expert witness nomination (X. kafli), oral pleadings (102. gr.), and appeal deadlines (144. gr. og 154. gr.), complete with visual urgency countdowns and iCalendar (.ics) exports.
 3. **Court Bundle Generator (*Málsgagnasafn skv. reglum dómstólasýslunnar nr. 1/2020*):** One-click generation of court-ready bundles, including official cover pages (*forsíða*), structured table of contents (*efnisyfirlit*), plaintiff/defendant exhibit tagging (A-1, B-1), and continuous Bates stamp numbering (`Bls. X af Y`).
-4. **Legal Drafting Studio (*Rafræn Lögmannsstofa & Skjalagerð*):** Drafting of writs (*stefnur*), defense statements (*greinargerðir*), motions to dismiss (*frávísunarkröfur*), and witness lists with version diffing and Word (.docx)/PDF exports.
+4. **Legal Drafting Studio (*Málastjórnun & Skjalagerð*):** Drafting of writs (*stefnur*), defense statements (*greinargerðir*), motions to dismiss (*frávísunarkröfur*), and witness lists with version diffing and Word (.docx)/PDF exports.
 5. **Statutory Fee & Cost Accounting (*130. gr. eml. Málskostnaðarreiknivél*):** Live billable timer, court filing fee calculator (*stefnugjöld 131. gr.*), outlay accounting, 24% VAT, and automated formal cost schedules for court submission.
 6. **Air-Gapped Legal AI Assistant:** On-device semantic search, legal question answering, statutory cross-referencing, and precedent citations with pinpoint document references.
 7. **Example Legal Document Library (`/examples`):** Production-grade library of realistic Icelandic trial materials (expert reports, construction contracts, summons, legal emails, demand letters, and surveyor petitions) importable directly into existing or newly created cases via `/api/v1/examples`.
@@ -234,7 +234,7 @@ Below are high-resolution screenshots illustrating the end-to-end legal workflow
 
 ---
 
-### 5. Electronic Legal Drafting Studio (*Rafræn Lögmannsstofa*)
+### 5. Electronic Legal Drafting Studio (*Málastjórnun*)
 
 #### Figure 7.1: Legal Drafting Studio Workspace
 *Full-featured drafting environment configured for Icelandic civil pleadings and judicial motions.*

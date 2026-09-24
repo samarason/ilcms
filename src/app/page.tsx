@@ -808,7 +808,20 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#f8fafc" }}>
+    <div
+      id="ilcms-main-window"
+      className="scrollable-window"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "100vh",
+        width: "100%",
+        minWidth: "1024px",
+        overflowX: "auto",
+        overflowY: "auto",
+        background: "#f8fafc",
+      }}
+    >
       {/* Header */}
       <header
         style={{
@@ -986,14 +999,33 @@ export default function Dashboard() {
       </header>
 
       {/* Main 3-Pane Workspace */}
-      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr 400px", flex: 1, overflow: "hidden" }}>
+      <div
+        id="ilcms-workspace-grid"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "300px minmax(400px, 1fr) 400px",
+          gridTemplateRows: "minmax(0, 1fr)",
+          flex: 1,
+          minHeight: "560px",
+          height: "calc(100vh - 54px)",
+          maxHeight: "calc(100vh - 54px)",
+          minWidth: "1050px",
+          overflow: "hidden",
+        }}
+      >
         {/* Pane 1: Cases List */}
         <section
+          id="pane-1-cases"
           style={{
             borderRight: "1px solid #e2e8f0",
             background: "#fff",
             display: "flex",
             flexDirection: "column",
+            height: "100%",
+            maxHeight: "100%",
+            minHeight: 0,
+            minWidth: 0,
+            overflow: "hidden",
           }}
         >
           <div style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>
@@ -1207,7 +1239,18 @@ export default function Dashboard() {
               }}
             />
           </div>
-          <div style={{ flex: 1, overflowY: "auto", padding: "8px" }}>
+          {/* Cases Tree List */}
+          <div
+            id="cases-tree-pane"
+            className="scrollable-pane scrollable-tree"
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: "scroll",
+              overflowX: "auto",
+              padding: "8px",
+            }}
+          >
             {filteredCases.length === 0 ? (
               <div style={{ textAlign: "center", padding: "20px 10px", color: "#94a3b8", fontSize: "0.82rem" }}>
                 {urgentFilterOnly
@@ -1357,7 +1400,20 @@ export default function Dashboard() {
         </section>
 
         {/* Pane 2: Case Details, Deadlines, Court Bundle & Precedents */}
-        <section style={{ padding: "20px", overflowY: "auto", background: "#f8fafc" }}>
+        <section
+          id="pane-2-detail"
+          className="scrollable-pane"
+          style={{
+            padding: "20px",
+            overflowY: "scroll",
+            overflowX: "auto",
+            height: "100%",
+            maxHeight: "100%",
+            minHeight: 0,
+            minWidth: 0,
+            background: "#f8fafc",
+          }}
+        >
           {activeCase ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {/* Urgent Deadline Alert Banner (<48 hours) */}
@@ -1850,7 +1906,19 @@ export default function Dashboard() {
                     {docs.length === 0 ? (
                       <div style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Engin skjöl skráð á þetta mál.</div>
                     ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                      <div
+                        id="documents-tree-container"
+                        className="scrollable-tree"
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "10px",
+                          maxHeight: "680px",
+                          overflowY: "auto",
+                          overflowX: "auto",
+                          paddingRight: "4px",
+                        }}
+                      >
                         {versionActionNotice && (
                           <div
                             style={{
@@ -2363,7 +2431,19 @@ export default function Dashboard() {
                         </div>
                       )}
 
-                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <div
+                        id="calc-deadlines-tree-container"
+                        className="scrollable-tree"
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "8px",
+                          maxHeight: "380px",
+                          overflowY: "auto",
+                          overflowX: "auto",
+                          paddingRight: "4px",
+                        }}
+                      >
                         {calcResult.deadlines?.map((dl: any, idx: number) => (
                           <div
                             key={idx}
@@ -2417,7 +2497,19 @@ export default function Dashboard() {
                         Engir frestir hafa verið skráðir á þetta mál enn sem komið er. Notaðu reiknivélina að ofan.
                       </div>
                     ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <div
+                        id="deadlines-tree-container"
+                        className="scrollable-tree"
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "8px",
+                          maxHeight: "520px",
+                          overflowY: "auto",
+                          overflowX: "auto",
+                          paddingRight: "4px",
+                        }}
+                      >
                         {deadlines.map((d: any) => {
                           const hours = getDeadlineHoursRemaining(d.target_date);
                           const isOverdue = hours < 0;
@@ -2637,7 +2729,17 @@ export default function Dashboard() {
                     )}
 
                     {/* Exhibits Table */}
-                    <div style={{ overflowX: "auto" }}>
+                    <div
+                      id="bundle-exhibits-tree-container"
+                      className="scrollable-tree"
+                      style={{
+                        maxHeight: "580px",
+                        overflowY: "auto",
+                        overflowX: "auto",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "6px",
+                      }}
+                    >
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
                         <thead>
                           <tr style={{ background: "#f1f5f9", borderBottom: "2px solid #cbd5e1", textAlign: "left" }}>
@@ -2875,7 +2977,19 @@ export default function Dashboard() {
                       <h4 style={{ margin: "0 0 10px 0", fontSize: "0.9rem", color: "#1e3a8a", textTransform: "uppercase", letterSpacing: "0.03em" }}>
                         ⚖️ Fordæmi Hæstaréttar og Landsréttar ({precedents.length})
                       </h4>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                      <div
+                        id="precedents-tree-container"
+                        className="scrollable-tree"
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "10px",
+                          maxHeight: "480px",
+                          overflowY: "auto",
+                          overflowX: "auto",
+                          paddingRight: "4px",
+                        }}
+                      >
                         {precedents.map((p: any) => (
                           <div
                             key={p.id}
@@ -2955,7 +3069,19 @@ export default function Dashboard() {
                       <h4 style={{ margin: "0 0 10px 0", fontSize: "0.9rem", color: "#065f46", textTransform: "uppercase", letterSpacing: "0.03em" }}>
                         📜 Gildandi lagagreinar í vigragrunni ({statutes.length})
                       </h4>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                      <div
+                        id="statutes-tree-container"
+                        className="scrollable-tree"
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "10px",
+                          maxHeight: "480px",
+                          overflowY: "auto",
+                          overflowX: "auto",
+                          paddingRight: "4px",
+                        }}
+                      >
                         {statutes.map((s: any) => (
                           <div
                             key={s.id}
@@ -3065,13 +3191,16 @@ export default function Dashboard() {
 
         {/* Pane 3: Air-Gapped AI Legal Assistant */}
         <section
+          id="pane-3-chat"
           style={{
             borderLeft: "1px solid #e2e8f0",
             background: "#fff",
             display: "flex",
             flexDirection: "column",
             height: "100%",
+            maxHeight: "100%",
             minHeight: 0,
+            minWidth: 0,
             overflow: "hidden",
             position: "relative",
           }}
@@ -3155,10 +3284,13 @@ export default function Dashboard() {
           <div
             ref={chatContainerRef}
             onScroll={handleChatScroll}
+            id="pane-3-chat-messages"
+            className="scrollable-pane scrollable-tree"
             style={{
               flex: 1,
               minHeight: 0,
-              overflowY: "auto",
+              overflowY: "scroll",
+              overflowX: "auto",
               padding: "14px",
               display: "flex",
               flexDirection: "column",
@@ -4020,6 +4152,7 @@ export default function Dashboard() {
             justifyContent: "center",
             zIndex: 9990,
             padding: "16px",
+            overflowY: "auto",
           }}
           onClick={() => setSelectedDoc(null)}
         >
@@ -4030,7 +4163,7 @@ export default function Dashboard() {
               borderRadius: "10px",
               width: "100%",
               maxWidth: "860px",
-              maxHeight: "90vh",
+              maxHeight: "92vh",
               display: "flex",
               flexDirection: "column",
               boxShadow: "0 25px 50px -12px rgba(0,0,0,0.35)",

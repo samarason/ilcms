@@ -1,6 +1,6 @@
 {
-  "name": "ILCMS Málastjórnunarkerfi",
-  "description": "Icelandic Legal Case Management System with 100% Air-Gapped AI and One-Step Local Laptop Installation",
+  "name": "ilcms",
+  "description": "Imported from GitHub: samarason/ilcms",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

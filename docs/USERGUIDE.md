@@ -16,7 +16,7 @@ Kerfið er sérsniðið að kröfum **laga um meðferð einkamála nr. 91/1991**
 4. [Dómaskjöl & Gögn (Documents & Exhibits)](#4-dómaskjöl--gögn-documents--exhibits)
 5. [Lögboðnir Dómsfrestir (Statutory Deadlines)](#5-lögboðnir-dómsfrestir-statutory-deadlines)
 6. [Málsgagnasafn (Court Bundle Generator)](#6-málsgagnasafn-court-bundle-generator)
-7. [Rafræn Lögmannsstofa & Skjalagerð (Legal Drafting)](#7-rafræn-lögmannsstofa--skjalagerð-legal-drafting)
+7. [Málastjórnun & Skjalagerð (Legal Drafting)](#7-málastjórnun--skjalagerð-legal-drafting)
 8. [Tímar & Málskostnaður skv. 130. gr. eml. (Cost Tracker)](#8-tímar--málskostnaður-skv-130-gr-eml-cost-tracker)
 9. [100% Air-Gapped Lögfræðiaðstoðarmaður (AI Assistant)](#9-100-air-gapped-lögfræðiaðstoðarmaður-ai-assistant)
 10. [Kerfisstjórn ILCMS & Auðlindavöktun K3s (Admin Console & Cluster Metrics)](#10-kerfisstjórn-ilcms--auðlindavöktun-k3s-admin-console--cluster-metrics)
@@ -145,7 +145,7 @@ Samkvæmt **reglum dómstólasýslunnar nr. 1/2020** er gerð rík krafa um frá
 
 ---
 
-## 7. Rafræn Lögmannsstofa & Skjalagerð (Legal Drafting)
+## 7. Málastjórnun & Skjalagerð (Legal Drafting)
 
 ### Gerð dómsskjala (Tab: „Skjalagerð“)
 Kerfið býður upp á sérsniðin sniðmát samkvæmt íslenskri réttarvenju:
