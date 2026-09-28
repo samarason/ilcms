@@ -1125,28 +1125,7 @@ export default function Dashboard() {
                   <span>📁</span>
                   <span>Dæmaskjöl</span>
                 </button>
-                <button
-                  id="btn-pane1-openwebui"
-                  type="button"
-                  onClick={handleOpenWebUIWindow}
-                  title="Opna AI - Lögfræðiviðmót (Open WebUI)"
-                  style={{
-                    background: "linear-gradient(135deg, #065f46, #059669)",
-                    color: "#ffffff",
-                    border: "1px solid #34d399",
-                    borderRadius: "4px",
-                    padding: "4px 8px",
-                    fontSize: "0.8rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                  }}
-                >
-                  <span>💬</span>
-                  <span>AI - Viðmót</span>
-                </button>
+
               </div>
             </div>
 
@@ -1852,63 +1831,7 @@ export default function Dashboard() {
                     </span>
                   )}
                 </button>
-                <button
-                  id="tab-openwebui-btn"
-                  onClick={() => setActiveTab("openwebui")}
-                  style={{
-                    padding: "8px 14px",
-                    background: activeTab === "openwebui" ? "#ecfdf5" : "transparent",
-                    color: "#047857",
-                    borderTop: "none",
-                    borderLeft: "none",
-                    borderRight: "none",
-                    borderBottom: activeTab === "openwebui" ? "2px solid #059669" : "2px solid transparent",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    fontSize: "0.85rem",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    transition: "all 0.15s ease-in-out",
-                    flexShrink: 0,
-                  }}
-                  title="Opna AI - Lögfræðiviðmót í vinnusvæði"
-                >
-                  💬 AI - Viðmót
-                  <span
-                    style={{
-                      fontSize: "0.68rem",
-                      background: "linear-gradient(135deg, #059669, #10b981)",
-                      color: "#ffffff",
-                      padding: "2px 7px",
-                      borderRadius: "10px",
-                      fontWeight: 700,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "3px",
-                      boxShadow: "0 1px 3px rgba(16, 185, 129, 0.3)",
-                    }}
-                  >
-                    Lögfræði
-                  </span>
-                  <span
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenWebUIWindow(e);
-                    }}
-                    title="Opna í sér glugga"
-                    style={{
-                      fontSize: "0.72rem",
-                      padding: "1px 5px",
-                      borderRadius: "4px",
-                      background: "rgba(5, 150, 105, 0.15)",
-                      color: "#047857",
-                      marginLeft: "2px",
-                    }}
-                  >
-                    ↗
-                  </span>
-                </button>
+
               </div>
 
               {/* TAB 1: DOCUMENTS */}
@@ -3488,28 +3411,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <button
-                id="btn-pane3-openwebui"
-                type="button"
-                onClick={handleOpenWebUIWindow}
-                style={{
-                  fontSize: "0.72rem",
-                  background: "linear-gradient(135deg, #065f46, #059669)",
-                  color: "#ffffff",
-                  border: "1px solid #34d399",
-                  borderRadius: "4px",
-                  padding: "3px 8px",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}
-                title="Opna AI - Viðmót (Open WebUI) í sér glugga"
-              >
-                <span>💬</span>
-                <span>AI - Viðmót</span>
-              </button>
+
               {chatMessages.length > 1 && (
                 <button
                   type="button"

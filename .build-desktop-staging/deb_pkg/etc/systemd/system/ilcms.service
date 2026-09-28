@@ -8,6 +8,8 @@ User=root
 WorkingDirectory=/opt/ilcms
 Environment=NODE_ENV=production
 Environment=PORT=3000
+Environment=HOST=127.0.0.1
+Environment=HOSTNAME=127.0.0.1
 Environment=AIRGAP_MODE=true
 ExecStart=/usr/bin/node /opt/ilcms/server.js
 Restart=on-failure
