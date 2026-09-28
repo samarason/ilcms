@@ -421,6 +421,33 @@ Below are high-resolution screenshots illustrating the end-to-end legal workflow
   <img src="assets/images/009.3-ilcms.png" alt="Statutory and Precedent Citations" width="100%" />
 </a>
 
+<br/>
+
+#### Figure 9.4: Integrated 3-Pane Legal Workspace with Air-Gapped AI Assistant
+*Comprehensive litigation workspace view featuring the active case matter, evidentiary documents, and real-time on-device legal AI assistant.*
+<br/>
+<a href="assets/images/009.4-ilcms.png" target="_blank" title="Click to view full-resolution image (3508x1804)">
+  <img src="assets/images/009.4-ilcms.png" alt="Integrated 3-Pane Legal Workspace with Air-Gapped AI Assistant" width="100%" />
+</a>
+
+<br/>
+
+#### Figure 9.5: In-App Open WebUI Legal Intelligence Dialog (*AI - Lögfræðiviðmót Gluggi*)
+*In-app modal dialog providing attorneys with localized Open WebUI chat, model persona configuration, and air-gap security verification.*
+<br/>
+<a href="assets/images/009.5-ilcms.png" target="_blank" title="Click to view full-resolution image (2740x1702)">
+  <img src="assets/images/009.5-ilcms.png" alt="In-App Open WebUI Legal Intelligence Dialog" width="100%" />
+</a>
+
+<br/>
+
+#### Figure 9.6: Dedicated Standalone Open WebUI Legal Interface Window (*Sjálfstæður Gluggi*)
+*Dedicated browser window (`/open-webui`) equipped with active case switching, multi-document context analysis, and strict zero-egress local inference.*
+<br/>
+<a href="assets/images/009.6-ilcms.png" target="_blank" title="Click to view full-resolution image (2726x1690)">
+  <img src="assets/images/009.6-ilcms.png" alt="Dedicated Standalone Open WebUI Legal Interface Window" width="100%" />
+</a>
+
 ---
 
 ### 8. System Administration & K3s Resource Monitor (*Kerfisstjórn*)
