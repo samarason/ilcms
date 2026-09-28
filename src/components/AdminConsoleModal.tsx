@@ -89,7 +89,7 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
   }, [logs, activeTab, autoScrollLogs]);
 
   // Check authorization
-  const isAdmin = currentUser?.email === "admin@ilcms.is" || currentUser?.role === "ADMIN";
+  const isAdmin = currentUser?.email === "admin@ilcms.is" || currentUser?.role?.toUpperCase() === "ADMIN";
 
   if (!isOpen) return null;
 

@@ -133,6 +133,19 @@ kubectl get svc -n ilcms open-webui
 # Then navigate to: http://chat.ilcms.local
 ```
 
+### Unified Port 3000 Single-Port Access (Remote & Tunnel Environments)
+When deploying on remote servers, VMs, or environments where **only port 3000** is forwarded or reachable by your browser:
+1. **In-App Open WebUI:** Open WebUI is directly accessible inside the web application at `http://127.0.0.1:3000` via the **💬 Open WebUI** tab or the top header button. It communicates with Ollama internally over the local backend.
+2. **Reverse Proxy Endpoints on Port 3000:**
+   - **Ollama AI API:** `http://127.0.0.1:3000/api/v1/ollama/api/tags`, `chat`, `generate`
+   - **Keycloak OIDC:** `http://127.0.0.1:3000/realms/ilcms/.well-known/openid-configuration`
+   - **Open WebUI Gateway:** `http://127.0.0.1:3000/api/v1/openwebui/health`
+3. **Forward All Ports at Once (Optional):**
+   If you wish to expose all ports (3000, 3080, 8080, 11434) to your client machine, run the provided helper script:
+   ```bash
+   ./scripts/port-forward-all.sh
+   ```
+
 ---
 
 ## Standalone Desktop Packages (.msi, .rpm, .deb, .dmg)

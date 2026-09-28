@@ -5,9 +5,10 @@ import { extractTextFromDocx, isDocxBuffer } from "@/lib/docxExtractor";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
-  const caseId = params.id;
+  const resolved = await Promise.resolve(params);
+  const caseId = resolved.id;
   const docs = docsStore.filter((d) => d.case_id === caseId);
 
   // Auto-clean any previously uploaded documents that have raw PDF or DOCX bytes/strings
@@ -76,10 +77,11 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const caseId = params.id;
+    const resolved = await Promise.resolve(params);
+    const caseId = resolved.id;
     const contentType = request.headers.get("content-type") || "";
 
     if (contentType.includes("application/json")) {
@@ -262,10 +264,11 @@ Vigrun í pgvector (768d embedding) hefur verið framkvæmd fyrir staðbundið R
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const caseId = params.id;
+    const resolved = await Promise.resolve(params);
+    const caseId = resolved.id;
     const body = await request.json();
     const { doc_id, notes } = body;
 

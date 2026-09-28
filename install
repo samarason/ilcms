@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# ILCMS (Icelandic Legal Case Management System)
+# One-Step Local Laptop Installation Script
+# ==============================================================================
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec bash "${SCRIPT_DIR}/install.sh" "$@"

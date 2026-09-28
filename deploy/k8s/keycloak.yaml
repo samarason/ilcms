@@ -166,6 +166,8 @@ spec:
               value: "true"
             - name: KC_HTTP_ENABLED
               value: "true"
+            - name: KC_HTTP_MANAGEMENT_PORT
+              value: "9000"
             - name: KC_HOSTNAME_STRICT
               value: "false"
             # Limit Keycloak heap to 768MB so laptop keeps 8GB+ for Ollama LLM

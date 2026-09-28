@@ -10,6 +10,7 @@
     "start": "NODE_OPTIONS=\"--require ./scripts/use-swc-wasm.js\" NODE_ENV=production next start -p 3000 -H 0.0.0.0",
     "install:local": "./install.sh",
     "package:desktop": "bash ./package-desktop.sh --all",
+    "diagnose:k3s": "bash ./scripts/diagnose-k3s-connectivity.sh",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

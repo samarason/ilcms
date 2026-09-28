@@ -9,6 +9,8 @@ import { LegalDraftingView } from "@/components/LegalDraftingView";
 import { AdminConsoleModal } from "@/components/AdminConsoleModal";
 import { ExampleDocsPickerModal } from "@/components/ExampleDocsPickerModal";
 import { OpenWebUIModal } from "@/components/OpenWebUIModal";
+import { OpenWebUIView } from "@/components/OpenWebUIView";
+import { OpenWebUIWindowModal } from "@/components/OpenWebUIWindowModal";
 import { PRE_SEEDED_STATUTES } from "@/lib/legal-knowledge";
 import { evaluateCaseDeadlineUrgency, getDeadlineHoursRemaining } from "@/lib/deadline-urgency";
 
@@ -37,6 +39,12 @@ export default function Dashboard() {
   const [showInfraModal, setShowInfraModal] = useState(false);
   const [showAdminConsoleModal, setShowAdminConsoleModal] = useState(false);
   const [showOpenWebUIModal, setShowOpenWebUIModal] = useState(false);
+  const [showOpenWebUIWindowModal, setShowOpenWebUIWindowModal] = useState(false);
+
+  const handleOpenWebUIWindow = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    setShowOpenWebUIWindowModal(true);
+  };
 
   const [chatMessages, setChatMessages] = useState<any[]>([
     {
@@ -65,8 +73,8 @@ export default function Dashboard() {
     setUserHasScrolledUp(isUp);
   };
 
-  // New states for Statutory Deadline Engine, Court Bundle, Precedents, and Billing
-  const [activeTab, setActiveTab] = useState<"docs" | "deadlines" | "bundle" | "law" | "drafting" | "billing">("docs");
+  // New states for Statutory Deadline Engine, Court Bundle, Precedents, Billing, and Open WebUI
+  const [activeTab, setActiveTab] = useState<"docs" | "deadlines" | "bundle" | "law" | "drafting" | "billing" | "openwebui">("docs");
   const [deadlines, setDeadlines] = useState<any[]>([]);
   const [allDeadlines, setAllDeadlines] = useState<any[]>([]);
   const [urgentFilterOnly, setUrgentFilterOnly] = useState<boolean>(false);
@@ -834,10 +842,12 @@ export default function Dashboard() {
           background: "#09101d",
           color: "#fff",
           borderBottom: "1px solid #1e293b",
+          flexWrap: "wrap",
+          gap: "10px",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          <strong style={{ fontSize: "1.05rem", letterSpacing: "0.01em" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          <strong style={{ fontSize: "1.05rem", letterSpacing: "0.01em", flexShrink: 0 }}>
             ILCMS Málastjórnunarkerfi
           </strong>
           <span
@@ -895,7 +905,7 @@ export default function Dashboard() {
             pgvector: Virkt
           </span>
         </div>
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
           {/* Keycloak Persona Switcher */}
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Innskráður:</span>
@@ -923,69 +933,76 @@ export default function Dashboard() {
               <option value="admin">🛡️ Kerfisstjóri ILCMS (Kerfisstjóri)</option>
             </select>
           </div>
-          {/* Kerfisstjóraviðmót - Aðeins sýnilegt fyrir notanda admin@ilcms.is */}
-          {(user?.email === "admin@ilcms.is" || user?.role === "ADMIN") && (
+          {/* Kerfisstjóraviðmót - Aðeins sýnilegt fyrir notanda admin / kerfisstjóra */}
+          {(user?.email === "admin@ilcms.is" || user?.role?.toUpperCase() === "ADMIN") && (
             <button
               id="btn-admin-console"
               onClick={() => setShowAdminConsoleModal(true)}
               style={{
-                padding: "4px 12px",
-                background: "linear-gradient(135deg, #1e3a8a, #0284c7)",
+                padding: "5px 14px",
+                background: "linear-gradient(135deg, #1d4ed8, #0284c7)",
                 color: "#ffffff",
-                border: "1px solid #38bdf8",
-                borderRadius: "4px",
+                border: "1px solid #60a5fa",
+                borderRadius: "6px",
                 cursor: "pointer",
-                fontSize: "0.76rem",
+                fontSize: "0.78rem",
                 fontWeight: 700,
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
-                boxShadow: "0 0 10px rgba(56, 189, 248, 0.3)",
+                boxShadow: "0 2px 10px rgba(37, 99, 235, 0.4)",
+                transition: "all 0.15s ease-in-out",
+                letterSpacing: "0.01em",
+                flexShrink: 0,
               }}
               title="Opna Kerfisstjóraviðmót (Aðeins fyrir notanda admin@ilcms.is)"
             >
-              <span>🛡️</span>
+              <span style={{ fontSize: "0.9rem" }}>🛡️</span>
               <span>Kerfisstjórn</span>
             </button>
           )}
           <button
             onClick={() => setShowInfraModal(true)}
             style={{
-              padding: "4px 8px",
+              padding: "5px 10px",
               background: "#1e293b",
               color: "#38bdf8",
               border: "1px solid #0284c7",
-              borderRadius: "4px",
+              borderRadius: "6px",
               cursor: "pointer",
-              fontSize: "0.75rem",
+              fontSize: "0.76rem",
               display: "flex",
               alignItems: "center",
               gap: "4px",
+              flexShrink: 0,
             }}
           >
             ⚙️ Innviðir
           </button>
           <button
             id="btn-open-webui-launcher"
-            onClick={() => setShowOpenWebUIModal(true)}
+            onClick={handleOpenWebUIWindow}
             style={{
-              padding: "4px 10px",
+              padding: "5px 14px",
               background: "linear-gradient(135deg, #065f46, #059669)",
               color: "#ffffff",
               border: "1px solid #34d399",
-              borderRadius: "4px",
+              borderRadius: "6px",
               cursor: "pointer",
-              fontSize: "0.75rem",
-              fontWeight: 600,
+              fontSize: "0.78rem",
+              fontWeight: 700,
               display: "flex",
               alignItems: "center",
-              gap: "5px",
-              boxShadow: "0 0 8px rgba(52, 211, 153, 0.25)",
+              gap: "6px",
+              boxShadow: "0 2px 10px rgba(16, 185, 129, 0.35)",
+              transition: "all 0.15s ease-in-out",
+              letterSpacing: "0.01em",
+              flexShrink: 0,
             }}
-            title="Opna Open WebUI (Vafraspjall & Ollama aðgangur á porti 3080)"
+            title="Opna AI - Lögfræðiviðmót"
           >
-            <span>💬</span>
-            <span>Open WebUI</span>
+            <span style={{ fontSize: "0.9rem" }}>💬</span>
+            <span>AI - Viðmót</span>
           </button>
           <button
             id="btn-header-logout"
@@ -1003,6 +1020,7 @@ export default function Dashboard() {
               alignItems: "center",
               gap: "4px",
               transition: "all 0.15s ease",
+              flexShrink: 0,
             }}
             onMouseOver={(e) => {
               e.currentTarget.style.background = "#b91c1c";
@@ -1106,6 +1124,28 @@ export default function Dashboard() {
                 >
                   <span>📁</span>
                   <span>Dæmaskjöl</span>
+                </button>
+                <button
+                  id="btn-pane1-openwebui"
+                  type="button"
+                  onClick={handleOpenWebUIWindow}
+                  title="Opna AI - Lögfræðiviðmót (Open WebUI)"
+                  style={{
+                    background: "linear-gradient(135deg, #065f46, #059669)",
+                    color: "#ffffff",
+                    border: "1px solid #34d399",
+                    borderRadius: "4px",
+                    padding: "4px 8px",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <span>💬</span>
+                  <span>AI - Viðmót</span>
                 </button>
               </div>
             </div>
@@ -1811,6 +1851,63 @@ export default function Dashboard() {
                       Í GANGI
                     </span>
                   )}
+                </button>
+                <button
+                  id="tab-openwebui-btn"
+                  onClick={() => setActiveTab("openwebui")}
+                  style={{
+                    padding: "8px 14px",
+                    background: activeTab === "openwebui" ? "#ecfdf5" : "transparent",
+                    color: "#047857",
+                    borderTop: "none",
+                    borderLeft: "none",
+                    borderRight: "none",
+                    borderBottom: activeTab === "openwebui" ? "2px solid #059669" : "2px solid transparent",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontSize: "0.85rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    transition: "all 0.15s ease-in-out",
+                    flexShrink: 0,
+                  }}
+                  title="Opna AI - Lögfræðiviðmót í vinnusvæði"
+                >
+                  💬 AI - Viðmót
+                  <span
+                    style={{
+                      fontSize: "0.68rem",
+                      background: "linear-gradient(135deg, #059669, #10b981)",
+                      color: "#ffffff",
+                      padding: "2px 7px",
+                      borderRadius: "10px",
+                      fontWeight: 700,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "3px",
+                      boxShadow: "0 1px 3px rgba(16, 185, 129, 0.3)",
+                    }}
+                  >
+                    Lögfræði
+                  </span>
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenWebUIWindow(e);
+                    }}
+                    title="Opna í sér glugga"
+                    style={{
+                      fontSize: "0.72rem",
+                      padding: "1px 5px",
+                      borderRadius: "4px",
+                      background: "rgba(5, 150, 105, 0.15)",
+                      color: "#047857",
+                      marginLeft: "2px",
+                    }}
+                  >
+                    ↗
+                  </span>
                 </button>
               </div>
 
@@ -3205,10 +3302,138 @@ export default function Dashboard() {
                   onResetTimer={handleResetTimer}
                 />
               )}
+
+              {/* TAB 6: OPEN WEBUI (IN-APP PORT 3000 GATEWAY) */}
+              {activeTab === "openwebui" && (
+                <OpenWebUIView
+                  activeCase={activeCase}
+                  caseDocs={docs}
+                  onSaveToCaseDocs={async (title, content, docType) => {
+                    if (selectedCaseId) {
+                      try {
+                        await fetch(`/api/v1/cases/${selectedCaseId}/documents`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            title,
+                            doc_type: docType,
+                            content,
+                            author: user?.name || "Guðrún Sigurðardóttir hrl.",
+                          }),
+                        });
+                        fetchDocs(selectedCaseId);
+                      } catch (err) {
+                        console.error("Failed to save Open WebUI note to case docs:", err);
+                      }
+                    }
+                  }}
+                />
+              )}
+            </div>
+          ) : activeTab === "openwebui" ? (
+            <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "10px 16px",
+                  background: "#064e3b",
+                  borderRadius: "8px",
+                  marginBottom: "14px",
+                  color: "#ffffff",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "1.1rem" }}>💬</span>
+                  <span style={{ fontSize: "0.88rem", fontWeight: 700 }}>
+                    AI - Lögfræðiviðmót (Almenn ráðgjöf & réttarfar)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("docs")}
+                  style={{
+                    fontSize: "0.74rem",
+                    color: "#f8fafc",
+                    background: "rgba(255,255,255,0.15)",
+                    border: "1px solid rgba(255,255,255,0.3)",
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  ⬅ Aftur í málaskrá
+                </button>
+              </div>
+              <OpenWebUIView />
             </div>
           ) : (
-            <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>
-              Veldu mál úr vinstri dálki til að skoða gögn og spyrja lögfræðiaðstoðarmann.
+            <div
+              style={{
+                padding: "60px 24px",
+                textAlign: "center",
+                color: "#64748b",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "14px",
+              }}
+            >
+              <div style={{ fontSize: "2.4rem" }}>⚖️</div>
+              <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#0f172a", fontWeight: 700 }}>
+                ILCMS Lögfræðistofa & Málastjórnun
+              </h3>
+              <p style={{ margin: 0, maxWidth: "460px", fontSize: "0.85rem", lineHeight: 1.6, color: "#64748b" }}>
+                Veldu mál úr málaskránni til vinstri til að skoða skjöl, fresti og málsgagnasöfn, eða ræstu sjálfstæða lögfræðiaðstoðarmanninn hér fyrir neðan:
+              </p>
+              <div style={{ display: "flex", gap: "10px", marginTop: "6px", flexWrap: "wrap", justifyContent: "center" }}>
+                <button
+                  id="btn-empty-open-webui"
+                  onClick={handleOpenWebUIWindow}
+                  style={{
+                    padding: "8px 18px",
+                    background: "linear-gradient(135deg, #065f46, #059669)",
+                    color: "#ffffff",
+                    border: "1px solid #34d399",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontSize: "0.85rem",
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    boxShadow: "0 2px 12px rgba(16, 185, 129, 0.35)",
+                  }}
+                  title="Opna AI - Lögfræðiviðmót í sérstökum glugga"
+                >
+                  <span style={{ fontSize: "1rem" }}>💬</span>
+                  <span>AI - Viðmót (Gluggi)</span>
+                  <span style={{ fontSize: "0.8rem", opacity: 0.8 }}>↗</span>
+                </button>
+                <button
+                  id="btn-empty-tab-openwebui"
+                  onClick={() => setActiveTab("openwebui")}
+                  style={{
+                    padding: "8px 18px",
+                    background: "#0284c7",
+                    color: "#ffffff",
+                    border: "1px solid #38bdf8",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontSize: "0.85rem",
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    boxShadow: "0 2px 12px rgba(2, 132, 199, 0.3)",
+                  }}
+                  title="Opna AI - Lögfræðiviðmót hér í vinnusvæði"
+                >
+                  <span style={{ fontSize: "1rem" }}>🖥️</span>
+                  <span>AI - Viðmót í flipa</span>
+                </button>
+              </div>
             </div>
           )}
         </section>
@@ -3263,6 +3488,28 @@ export default function Dashboard() {
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <button
+                id="btn-pane3-openwebui"
+                type="button"
+                onClick={handleOpenWebUIWindow}
+                style={{
+                  fontSize: "0.72rem",
+                  background: "linear-gradient(135deg, #065f46, #059669)",
+                  color: "#ffffff",
+                  border: "1px solid #34d399",
+                  borderRadius: "4px",
+                  padding: "3px 8px",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+                title="Opna AI - Viðmót (Open WebUI) í sér glugga"
+              >
+                <span>💬</span>
+                <span>AI - Viðmót</span>
+              </button>
               {chatMessages.length > 1 && (
                 <button
                   type="button"
@@ -3290,27 +3537,6 @@ export default function Dashboard() {
                   Hreinsa
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => setShowOpenWebUIModal(true)}
-                title="Opna Open WebUI (Vafraspjall á porti 3080 eða chat.ilcms.local)"
-                style={{
-                  fontSize: "0.7rem",
-                  background: "#ecfdf5",
-                  color: "#047857",
-                  border: "1px solid #a7f3d0",
-                  borderRadius: "4px",
-                  padding: "3px 8px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  fontWeight: 600,
-                }}
-              >
-                <span>💬</span>
-                <span>Open WebUI</span>
-              </button>
               <span
                 style={{
                   fontSize: "0.7rem",
@@ -3914,6 +4140,34 @@ export default function Dashboard() {
       <OpenWebUIModal
         isOpen={showOpenWebUIModal}
         onClose={() => setShowOpenWebUIModal(false)}
+        onOpenInApp={() => setActiveTab("openwebui")}
+      />
+
+      {/* AI - Lögfræðiviðmót Desktop Window Modal */}
+      <OpenWebUIWindowModal
+        isOpen={showOpenWebUIWindowModal}
+        onClose={() => setShowOpenWebUIWindowModal(false)}
+        activeCase={activeCase}
+        caseDocs={docs}
+        onSaveToCaseDocs={async (title, content, docType) => {
+          if (selectedCaseId) {
+            try {
+              await fetch(`/api/v1/cases/${selectedCaseId}/documents`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  title,
+                  doc_type: docType,
+                  content,
+                  author: user?.name || "Guðrún Sigurðardóttir hrl.",
+                }),
+              });
+              fetchDocs(selectedCaseId);
+            } catch (err) {
+              console.error("Failed to save Open WebUI note to case docs:", err);
+            }
+          }
+        }}
       />
 
       {/* ATHUGASEMDIR (DOCUMENT NOTES) MODAL */}

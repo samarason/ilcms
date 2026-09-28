@@ -256,16 +256,95 @@ if [ "$MODE" = "k3s" ]; then
   fi
   echo "✓ Kubernetes cluster is reachable."
 
-  # Import offline images into K3s containerd namespace if available
-  if [ -f "./images/ilcms-images.tar" ]; then
-    echo "Importing offline images from ./images/ilcms-images.tar into K3s containerd..."
-    if command -v k3s >/dev/null 2>&1; then
-      k3s ctr images import ./images/ilcms-images.tar 2>/dev/null || sudo k3s ctr images import ./images/ilcms-images.tar 2>/dev/null || true
+  # 1. Build and import fresh web application image with updated UI & AI - Viðmót buttons
+  echo "Building fresh 'ilcms-web:latest' image from current codebase..."
+  IMAGE_BUILT=false
+  BUILD_TAG="build-$(date +%s)"
+
+  if command -v docker >/dev/null 2>&1; then
+    if docker build -t ilcms-web:latest . ; then
+      echo "✓ Container image 'ilcms-web:latest' built successfully via Docker."
+      IMAGE_BUILT=true
     fi
+  elif command -v podman >/dev/null 2>&1; then
+    if podman build -t ilcms-web:latest . ; then
+      echo "✓ Container image 'ilcms-web:latest' built successfully via Podman."
+      IMAGE_BUILT=true
+    fi
+  elif command -v nerdctl >/dev/null 2>&1; then
+    if nerdctl -n k8s.io build -t ilcms-web:latest . 2>/dev/null || sudo nerdctl -n k8s.io build -t ilcms-web:latest . 2>/dev/null; then
+      echo "✓ Container image 'ilcms-web:latest' built via nerdctl in k8s.io namespace."
+      IMAGE_BUILT=true
+    fi
+  fi
+
+  # Helper: Remove stale containerd image tags so containerd does not serve old layers
+  clean_stale_k3s_images() {
+    for c_cmd in \
+      "k3s ctr -a /run/k3s/containerd/containerd.sock -n k8s.io" \
+      "k3s ctr -n k8s.io" \
+      "sudo k3s ctr -a /run/k3s/containerd/containerd.sock -n k8s.io" \
+      "sudo k3s ctr -n k8s.io" \
+      "ctr -a /run/k3s/containerd/containerd.sock -n k8s.io" \
+      "ctr -n k8s.io" \
+      "sudo ctr -n k8s.io"; do
+      $c_cmd images rm docker.io/library/ilcms-web:latest >/dev/null 2>&1 || true
+      $c_cmd images rm ilcms-web:latest >/dev/null 2>&1 || true
+    done
+  }
+
+  # Helper: Import tar file into K3s containerd using available CLI tools
+  import_tar_to_k3s() {
+    local tar_file="$1"
+    local done=false
+    for c_cmd in \
+      "k3s ctr -a /run/k3s/containerd/containerd.sock -n k8s.io images import ${tar_file}" \
+      "k3s ctr -n k8s.io images import ${tar_file}" \
+      "sudo k3s ctr -a /run/k3s/containerd/containerd.sock -n k8s.io images import ${tar_file}" \
+      "sudo k3s ctr -n k8s.io images import ${tar_file}" \
+      "ctr -a /run/k3s/containerd/containerd.sock -n k8s.io images import ${tar_file}" \
+      "ctr -n k8s.io images import ${tar_file}" \
+      "sudo ctr -n k8s.io images import ${tar_file}"; do
+      if $c_cmd >/dev/null 2>&1; then
+        done=true
+        break
+      fi
+    done
+    [ "$done" = true ]
+  }
+
+  # 2. Import image into K3s containerd namespace (k8s.io)
+  if [ "$IMAGE_BUILT" = true ]; then
+    echo "Exporting and streaming fresh 'ilcms-web' image into K3s containerd (k8s.io namespace)..."
+    TMP_IMG_TAR="/tmp/ilcms-web-fresh-$$.tar"
+    clean_stale_k3s_images
+
+    if command -v docker >/dev/null 2>&1; then
+      docker save -o "$TMP_IMG_TAR" ilcms-web:latest
+    elif command -v podman >/dev/null 2>&1; then
+      podman save -o "$TMP_IMG_TAR" ilcms-web:latest
+    fi
+
+    if [ -f "$TMP_IMG_TAR" ]; then
+      if import_tar_to_k3s "$TMP_IMG_TAR"; then
+        echo "✓ Image imported into K3s containerd (with 'AI - Viðmót' UI updates)."
+      else
+        echo "⚠️ Note: Could not import image directly via ctr; K3s will load available local image."
+      fi
+      rm -f "$TMP_IMG_TAR"
+    fi
+  elif [ -f "./images/ilcms-images.tar" ]; then
+    echo "Importing offline images from ./images/ilcms-images.tar into K3s containerd (k8s.io namespace)..."
+    clean_stale_k3s_images
+    import_tar_to_k3s "./images/ilcms-images.tar" || true
   elif command -v docker >/dev/null 2>&1 && docker image inspect ilcms-web:latest >/dev/null 2>&1; then
-    echo "Streaming local 'ilcms-web:latest' image into K3s containerd..."
-    if command -v k3s >/dev/null 2>&1; then
-      docker save ilcms-web:latest | (k3s ctr images import - 2>/dev/null || sudo k3s ctr images import - 2>/dev/null || true)
+    echo "Streaming existing 'ilcms-web:latest' image into K3s containerd (k8s.io namespace)..."
+    clean_stale_k3s_images
+    TMP_IMG_TAR="/tmp/ilcms-web-existing-$$.tar"
+    docker save -o "$TMP_IMG_TAR" ilcms-web:latest 2>/dev/null || true
+    if [ -f "$TMP_IMG_TAR" ]; then
+      import_tar_to_k3s "$TMP_IMG_TAR" || true
+      rm -f "$TMP_IMG_TAR"
     fi
   fi
 
@@ -276,6 +355,10 @@ if [ "$MODE" = "k3s" ]; then
   else
     $KUBECTL_CMD apply -f deploy/k8s/
   fi
+
+  # Ensure pods pick up the fresh image rollout immediately
+  echo "Rolling out latest deployment for ilcms-web..."
+  $KUBECTL_CMD rollout restart deployment/ilcms-web -n ilcms 2>/dev/null || true
 
   echo ""
   echo "✓ Manifests applied successfully in 'ilcms' namespace."

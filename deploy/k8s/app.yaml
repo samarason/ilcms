@@ -47,7 +47,7 @@ spec:
             - name: AIRGAP_MODE
               value: "true"
             - name: OPEN_WEBUI_URL
-              value: "http://chat.ilcms.local"
+              value: "http://open-webui:8080"
           resources:
             requests:
               cpu: "500m"

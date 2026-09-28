@@ -132,6 +132,10 @@ spec:
       targetPort: 8080
       protocol: TCP
       name: http
+    - port: 3080
+      targetPort: 8080
+      protocol: TCP
+      name: http-3080
   selector:
     app: open-webui
 ---
@@ -164,3 +168,13 @@ spec:
                 name: open-webui
                 port:
                   number: 8080
+    - host: openwebui.ilcms.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: open-webui
+                port:
+                  number: 3080

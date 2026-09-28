@@ -5,9 +5,10 @@ import React, { useState, useEffect } from "react";
 interface OpenWebUIModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenInApp?: () => void;
 }
 
-export function OpenWebUIModal({ isOpen, onClose }: OpenWebUIModalProps) {
+export function OpenWebUIModal({ isOpen, onClose, onOpenInApp }: OpenWebUIModalProps) {
   const [activeTab, setActiveTab] = useState<"launch" | "docker" | "k8s" | "features">("launch");
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [airgapStatus, setAirgapStatus] = useState<any>(null);
@@ -282,6 +283,73 @@ export function OpenWebUIModal({ isOpen, onClose }: OpenWebUIModalProps) {
                     <div>• <strong>Auðkenning:</strong> Sjálfgefið opið á vinnustöð / Keycloak OIDC</div>
                   </div>
                 </div>
+              </div>
+
+              {/* Primary: In-App Port 3000 Access (Always Works) */}
+              <div
+                style={{
+                  border: "2px solid #059669",
+                  borderRadius: "10px",
+                  padding: "16px 20px",
+                  background: "#f0fdf4",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "16px",
+                  boxShadow: "0 4px 12px rgba(5, 150, 105, 0.1)",
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                    <span style={{ fontSize: "1.3rem" }}>✨</span>
+                    <strong style={{ fontSize: "1rem", color: "#065f46" }}>
+                      Innbyggt Open WebUI á Porti 3000 (Aðal-aðgangur)
+                    </strong>
+                    <span
+                      style={{
+                        background: "#059669",
+                        color: "#ffffff",
+                        padding: "2px 8px",
+                        borderRadius: "12px",
+                        fontSize: "0.7rem",
+                        fontWeight: 700,
+                      }}
+                    >
+                      Aðgengilegt núna
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: "0.82rem", color: "#166534", lineHeight: 1.5 }}>
+                    Þar sem aðeins port 3000 er opið er allt Open WebUI viðmótið innbyggt beint í ILCMS.
+                    Það notar staðbundið Ollama gegnum innri gátt án þess að krefjast aukaporta (3080/8080).
+                  </p>
+                </div>
+                {onOpenInApp && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenInApp();
+                    }}
+                    style={{
+                      padding: "10px 18px",
+                      background: "#059669",
+                      color: "#ffffff",
+                      border: "none",
+                      borderRadius: "8px",
+                      fontSize: "0.88rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      boxShadow: "0 2px 6px rgba(5, 150, 105, 0.3)",
+                    }}
+                  >
+                    <span>Opna hér í forriti</span>
+                    <span>➔</span>
+                  </button>
+                )}
               </div>
 
               {/* Direct Access Cards */}
@@ -811,7 +879,7 @@ export function OpenWebUIModal({ isOpen, onClose }: OpenWebUIModalProps) {
                 gap: "5px",
               }}
             >
-              <span>Opna Open WebUI</span>
+              <span>AI - Viðmót</span>
               <span>↗</span>
             </button>
             <button
