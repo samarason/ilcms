@@ -67,7 +67,7 @@ services:
     image: quay.io/keycloak/keycloak:24.0.5
     container_name: ilcms-keycloak
     restart: unless-stopped
-    command: start-dev --import-realm
+    command: start-dev --import-realm --proxy-headers=xforwarded --hostname-strict=false --hostname-strict-https=false --http-enabled=true
     ports:
       - "127.0.0.1:8080:8080"
     networks:
@@ -83,9 +83,12 @@ services:
       - KEYCLOAK_ADMIN_PASSWORD=admin_secret_ilcms
       - KC_HEALTH_ENABLED=true
       - KC_HTTP_ENABLED=true
+      - KC_PROXY_HEADERS=xforwarded
       - KC_HOSTNAME_STRICT=false
+      - KC_HOSTNAME_STRICT_HTTPS=false
       - JAVA_OPTS_KC_HEAP=-Xms256m -Xmx768m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m
     volumes:
+      - ./deploy/keycloak/master-realm.json:/opt/keycloak/data/import/master-realm.json:ro
       - ./deploy/keycloak/ilcms-realm.json:/opt/keycloak/data/import/ilcms-realm.json:ro
     deploy:
       resources:

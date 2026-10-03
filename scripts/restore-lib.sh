@@ -3898,12 +3898,34 @@ export async function getKeycloakAdminToken(): Promise<string | null> {
         token: data.access_token,
         expiresAt: Date.now() + ((data.expires_in || 60) - 15) * 1000,
       };
+      // Enforce sslRequired: NONE on master and target realms to prevent cookie rejection on HTTP
+      ensureSslPolicyNone(data.access_token, baseUrl);
       return data.access_token;
     }
     return null;
   } catch (err: any) {
     console.warn(`[KeycloakAdmin] Cannot reach Keycloak server: ${err.message}`);
     return null;
+  }
+}
+
+/**
+ * Ensures realms do not enforce SSL when deployed behind local HTTP reverse proxies
+ */
+async function ensureSslPolicyNone(token: string, baseUrl: string): Promise<void> {
+  try {
+    for (const realm of ["master", KEYCLOAK_REALM]) {
+      fetch(`${baseUrl}/admin/realms/${realm}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sslRequired: "NONE" }),
+      }).catch(() => {});
+    }
+  } catch {
+    // Non-fatal
   }
 }
 

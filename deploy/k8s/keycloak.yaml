@@ -8,13 +8,20 @@ metadata:
     app.kubernetes.io/component: auth
     app.kubernetes.io/part-of: ilcms
 data:
+  master-realm.json: |
+    {
+      "id": "master",
+      "realm": "master",
+      "displayName": "Keycloak",
+      "sslRequired": "NONE"
+    }
   ilcms-realm.json: |
     {
       "id": "ilcms",
       "realm": "ilcms",
       "displayName": "ILCMS Íslenska Málastjórnunarkerfið",
       "enabled": true,
-      "sslRequired": "none",
+      "sslRequired": "NONE",
       "registrationAllowed": false,
       "resetPasswordAllowed": true,
       "rememberMe": true,
@@ -142,6 +149,10 @@ spec:
           args:
             - "start-dev"
             - "--import-realm"
+            - "--proxy-headers=xforwarded"
+            - "--hostname-strict=false"
+            - "--hostname-strict-https=false"
+            - "--http-enabled=true"
           ports:
             - containerPort: 8080
               name: http
@@ -164,7 +175,11 @@ spec:
               value: "true"
             - name: KC_HTTP_ENABLED
               value: "true"
+            - name: KC_PROXY_HEADERS
+              value: "xforwarded"
             - name: KC_HOSTNAME_STRICT
+              value: "false"
+            - name: KC_HOSTNAME_STRICT_HTTPS
               value: "false"
             - name: KC_HTTP_MANAGEMENT_PORT
               value: "8080"

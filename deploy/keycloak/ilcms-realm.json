@@ -3,7 +3,7 @@
   "realm": "ilcms",
   "displayName": "ILCMS Íslenska Málastjórnunarkerfið",
   "enabled": true,
-  "sslRequired": "none",
+  "sslRequired": "NONE",
   "registrationAllowed": false,
   "resetPasswordAllowed": true,
   "rememberMe": true,
