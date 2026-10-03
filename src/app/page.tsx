@@ -11,6 +11,7 @@ import { ExampleDocsPickerModal } from "@/components/ExampleDocsPickerModal";
 import { OpenWebUIModal } from "@/components/OpenWebUIModal";
 import { OpenWebUIView } from "@/components/OpenWebUIView";
 import { OpenWebUIWindowModal } from "@/components/OpenWebUIWindowModal";
+import { StefnaGreinargerdWindowModal } from "@/components/StefnaGreinargerdWindowModal";
 import { PRE_SEEDED_STATUTES } from "@/lib/legal-knowledge";
 import { evaluateCaseDeadlineUrgency, getDeadlineHoursRemaining } from "@/lib/deadline-urgency";
 
@@ -40,6 +41,7 @@ export default function Dashboard() {
   const [showAdminConsoleModal, setShowAdminConsoleModal] = useState(false);
   const [showOpenWebUIModal, setShowOpenWebUIModal] = useState(false);
   const [showOpenWebUIWindowModal, setShowOpenWebUIWindowModal] = useState(false);
+  const [showStefnaGreinargerdModal, setShowStefnaGreinargerdModal] = useState(false);
 
   const handleOpenWebUIWindow = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
@@ -1004,6 +1006,7 @@ export default function Dashboard() {
             <span style={{ fontSize: "0.9rem" }}>💬</span>
             <span>AI - Viðmót</span>
           </button>
+
           <button
             id="btn-header-logout"
             onClick={handleLogout}
@@ -1981,13 +1984,17 @@ export default function Dashboard() {
                             <span>{versionActionNotice}</span>
                           </div>
                         )}
-                        {docs.map((d) => (
+                        {docs.map((d, idx) => (
                           <div
                             key={d.id}
                             onClick={() => {
-                              setSelectedDoc(d);
-                              setDocSearchQuery("");
-                              setDocCopied(false);
+                              if (idx === 0 || idx === 1) {
+                                setShowStefnaGreinargerdModal(true);
+                              } else {
+                                setSelectedDoc(d);
+                                setDocSearchQuery("");
+                                setDocCopied(false);
+                              }
                             }}
                             style={{
                               padding: "14px 16px",
@@ -2120,9 +2127,13 @@ export default function Dashboard() {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSelectedDoc(d);
-                                  setDocSearchQuery("");
-                                  setDocCopied(false);
+                                  if (idx === 0 || idx === 1) {
+                                    setShowStefnaGreinargerdModal(true);
+                                  } else {
+                                    setSelectedDoc(d);
+                                    setDocSearchQuery("");
+                                    setDocCopied(false);
+                                  }
                                 }}
                                 style={{
                                   background: "#2563eb",
@@ -6085,6 +6096,14 @@ export default function Dashboard() {
           initialItemBType={compareSelectedItems[1]?.type || undefined}
         />
       )}
+      {/* Stefna and Greinargerð Dedicated Window Modal */}
+      <StefnaGreinargerdWindowModal
+        isOpen={showStefnaGreinargerdModal}
+        onClose={() => setShowStefnaGreinargerdModal(false)}
+        activeCase={activeCase}
+        caseDocs={docs}
+      />
+
     </div>
   );
 }
