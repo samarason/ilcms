@@ -55,6 +55,20 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
   const [selectedUserForEdit, setSelectedUserForEdit] = useState<AdminUser | null>(null);
   const [showPasswordResetModal, setShowPasswordResetModal] = useState<AdminUser | null>(null);
   const [newResetPassword, setNewResetPassword] = useState("NýttLykilorð2026!");
+  const [keycloakConsoleUrl, setKeycloakConsoleUrl] = useState("http://ilcms.local/admin");
+
+  const resolveKeycloakConsoleUrl = () => {
+    if (typeof window === "undefined") return "http://ilcms.local/admin";
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
+    if (hostname === "ilcms.local" || hostname.endsWith(".ilcms.local")) {
+      return `${protocol}//ilcms.local/admin`;
+    }
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return `${protocol}//${hostname}:8080/admin`;
+    }
+    return `${protocol}//${hostname}:8080/admin`;
+  };
 
   // Audit state
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>(INITIAL_AUDIT_EVENTS);
@@ -76,6 +90,7 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
   useEffect(() => {
     if (!isOpen) return;
 
+    setKeycloakConsoleUrl(resolveKeycloakConsoleUrl());
     fetchServices();
     fetchUsers();
     fetchAudit();
@@ -1138,9 +1153,15 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
                     🔄 {loadingUsers ? "Sækir..." : "Samstilla við Keycloak"}
                   </button>
                   <a
-                    href="http://127.0.0.1:8080/admin/master/console/#/ilcms"
+                    id="btn-open-keycloak-admin-console"
+                    href={keycloakConsoleUrl}
                     target="_blank"
                     rel="noreferrer"
+                    onClick={(e) => {
+                      const url = resolveKeycloakConsoleUrl();
+                      setKeycloakConsoleUrl(url);
+                      e.currentTarget.href = url;
+                    }}
                     style={{
                       padding: "8px 14px",
                       background: "#1e293b",
@@ -1153,6 +1174,7 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
                       display: "flex",
                       alignItems: "center",
                       gap: "6px",
+                      cursor: "pointer",
                     }}
                   >
                     🔑 Opna Keycloak Admin Console ↗
