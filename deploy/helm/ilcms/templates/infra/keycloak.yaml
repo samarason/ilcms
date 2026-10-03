@@ -86,8 +86,6 @@ spec:
           ports:
             - containerPort: 8080
               name: http
-            - containerPort: 9000
-              name: management
           env:
             - name: KC_DB
               value: postgres
@@ -114,12 +112,30 @@ spec:
           volumeMounts:
             - name: realm-import
               mountPath: /opt/keycloak/data/import
+          startupProbe:
+            httpGet:
+              path: /health/started
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /health/ready
-              port: 9000
-            initialDelaySeconds: 25
+              port: 8080
+            initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
       volumes:
         - name: realm-import
           configMap:
