@@ -44,6 +44,10 @@ spec:
               value: "ilcms"
             - name: KEYCLOAK_CLIENT_ID
               value: "ilcms-web"
+            - name: KEYCLOAK_ADMIN
+              value: "admin"
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              value: "admin_secret_ilcms"
             - name: AIRGAP_MODE
               value: "true"
             - name: OPEN_WEBUI_URL

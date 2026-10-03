@@ -105,6 +105,8 @@ spec:
               value: "true"
             - name: KC_HOSTNAME_STRICT
               value: "false"
+            - name: KC_HTTP_MANAGEMENT_PORT
+              value: "8080"
             - name: JAVA_OPTS_KC_HEAP
               value: "-Xms256m -Xmx768m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m"
           resources:

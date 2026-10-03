@@ -41,6 +41,7 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
 
   // Users state (Keycloak RBAC)
   const [users, setUsers] = useState<AdminUser[]>(INITIAL_USERS);
+  const [keycloakConnected, setKeycloakConnected] = useState<boolean>(true);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [newUserName, setNewUserName] = useState("");
@@ -334,6 +335,7 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
       if (res.ok) {
         const data = await res.json();
         if (data.users) setUsers(data.users);
+        if (data.keycloakConnected !== undefined) setKeycloakConnected(data.keycloakConnected);
       }
     } catch (e) {
       console.error("Error fetching users:", e);
@@ -1075,7 +1077,7 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <h3 style={{ fontSize: "1.05rem", fontWeight: 700, margin: 0, color: "#f8fafc" }}>
-                      Keycloak 24 IAM — Notendastjórnun & Hlutverk (RBAC)
+                       Keycloak 24 IAM — Notendastjórnun & Hlutverk (RBAC)
                     </h3>
                     <span
                       style={{
@@ -1089,13 +1091,52 @@ export function AdminConsoleModal({ isOpen, onClose, currentUser }: AdminConsole
                     >
                       Realm: ilcms
                     </span>
+                    <span
+                      style={{
+                        fontSize: "0.68rem",
+                        padding: "2px 8px",
+                        borderRadius: "10px",
+                        background: keycloakConnected ? "#065f46" : "#854d0e",
+                        color: keycloakConnected ? "#a7f3d0" : "#fef08a",
+                        fontWeight: 600,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      {keycloakConnected ? "🟢 Keycloak Tengt (Samstillt)" : "🟡 Staðbundið (Keycloak ótengt)"}
+                    </span>
                   </div>
                   <p style={{ fontSize: "0.78rem", color: "#94a3b8", margin: "4px 0 0 0" }}>
-                    Stofnaðu og eyddu notendum, úthlutaðu hlutverkum (Lögmaður, Dómari, Aðstoðarmaður, Kerfisstjóri) eða opnaðu stjórnborð Keycloak beint.
+                    Stofnaðu og eyddu notendum, úthlutaðu hlutverkum (Lögmaður, Dómari, Aðstoðarmaður, Kerfisstjóri). Breytingar samstillast sjálfkrafa beint við Keycloak OIDC.
                   </p>
                 </div>
 
-                <div style={{ display: "flex", gap: "10px" }}>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                  <button
+                    onClick={() => {
+                      fetchUsers();
+                      setUserActionMsg("Sótti nýjustu notendur beint úr Keycloak.");
+                      setTimeout(() => setUserActionMsg(null), 3000);
+                    }}
+                    disabled={loadingUsers}
+                    style={{
+                      padding: "8px 12px",
+                      background: "#1e293b",
+                      color: "#94a3b8",
+                      border: "1px solid #475569",
+                      borderRadius: "6px",
+                      fontSize: "0.78rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                    title="Endurnýja lista úr Keycloak gagnagrunni"
+                  >
+                    🔄 {loadingUsers ? "Sækir..." : "Samstilla við Keycloak"}
+                  </button>
                   <a
                     href="http://127.0.0.1:8080/admin/master/console/#/ilcms"
                     target="_blank"

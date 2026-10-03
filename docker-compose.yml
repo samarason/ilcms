@@ -125,6 +125,8 @@ services:
       - KEYCLOAK_URL=http://keycloak:8080
       - KEYCLOAK_REALM=ilcms
       - KEYCLOAK_CLIENT_ID=ilcms-web
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin_secret_ilcms
       - DATABASE_URL=postgresql://ilcms_user:ilcms_secret_password@postgres:5432/ilcms_db
       - OPEN_WEBUI_URL=http://localhost:3080
     deploy:
