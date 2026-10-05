@@ -1922,6 +1922,28 @@ export default function Dashboard() {
                         <span>✍️</span>
                         <span>Mynda drög að stefnu/greinargerð</span>
                       </button>
+                      <button
+                        type="button"
+                        id="btn-stefna-greinargerd-window"
+                        onClick={() => setShowStefnaGreinargerdModal(true)}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          background: "#f8fafc",
+                          color: "#334155",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: "4px",
+                          padding: "6px 12px",
+                          fontSize: "0.82rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                        title="Opna samanburðarglugga: Stefna og greinargerð hlið við hlið"
+                      >
+                        <span>⚖️</span>
+                        <span>Stefna & greinargerð hlið við hlið</span>
+                      </button>
                     </form>
                   </div>
 
@@ -1987,14 +2009,12 @@ export default function Dashboard() {
                         {docs.map((d, idx) => (
                           <div
                             key={d.id}
+                            id={`doc-card-${d.id}`}
                             onClick={() => {
-                              if (idx === 0 || idx === 1) {
-                                setShowStefnaGreinargerdModal(true);
-                              } else {
-                                setSelectedDoc(d);
-                                setDocSearchQuery("");
-                                setDocCopied(false);
-                              }
+                              setSelectedDoc(d);
+                              setViewingVersion(null);
+                              setDocSearchQuery("");
+                              setDocCopied(false);
                             }}
                             style={{
                               padding: "14px 16px",
@@ -2125,15 +2145,13 @@ export default function Dashboard() {
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "8px", flexWrap: "wrap", width: "100%", marginTop: "2px" }}>
                               <button
                                 type="button"
+                                id={`btn-open-doc-${d.id}`}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (idx === 0 || idx === 1) {
-                                    setShowStefnaGreinargerdModal(true);
-                                  } else {
-                                    setSelectedDoc(d);
-                                    setDocSearchQuery("");
-                                    setDocCopied(false);
-                                  }
+                                  setSelectedDoc(d);
+                                  setViewingVersion(null);
+                                  setDocSearchQuery("");
+                                  setDocCopied(false);
                                 }}
                                 style={{
                                   background: "#2563eb",
@@ -2149,8 +2167,9 @@ export default function Dashboard() {
                                   gap: "4px",
                                   boxShadow: "0 1px 2px rgba(37,99,235,0.2)",
                                 }}
+                                title="Opna málsskjal til lestrar og vinnslu"
                               >
-                                👁️ Lesa skjal
+                                👁️ Lesa og vinna skjal
                               </button>
 
                               {/* Button next to "Lesa skjal": Athugasemdir button if attached, or option to add notes */}
@@ -4648,6 +4667,55 @@ export default function Dashboard() {
                   }}
                 >
                   📝 {selectedDoc.notes ? "Athugasemdir" : "+ Athugasemd"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedDoc(null);
+                    setViewingVersion(null);
+                    setActiveTab("drafting");
+                  }}
+                  title="Vinna með efni þessa skjals í drögum að stefnu eða greinargerð"
+                  style={{
+                    background: "#1e3a8a",
+                    color: "#dbeafe",
+                    border: "1px solid #3b82f6",
+                    borderRadius: "4px",
+                    padding: "5px 10px",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  ✍️ Vinna í drögum
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const docTitle = activeDocData.title || "málsskjal";
+                    setSelectedDoc(null);
+                    setViewingVersion(null);
+                    setChatInput(`Greindu málsskjalið „${docTitle}“ og dragðu fram helstu málsatvik, dómkröfur og lagarök.`);
+                  }}
+                  title="Senda skjal í gervigreindargreiningu í spjalli (Pane 3)"
+                  style={{
+                    background: "#4338ca",
+                    color: "#e0e7ff",
+                    border: "1px solid #6366f1",
+                    borderRadius: "4px",
+                    padding: "5px 10px",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  🤖 Greina í spjalli
                 </button>
                 <button
                   onClick={() => {
