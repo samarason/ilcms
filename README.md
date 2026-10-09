@@ -8,6 +8,10 @@
 [![Jurisdiction: Iceland 91/1991](https://img.shields.io/badge/Jurisdiction-%C3%8Dslenskt%20R%C3%A9ttarfar%20(91%2F1991)-indigo.svg)](#purpose--capabilities)
 [![Court Bundles: Dómstólasýslan 1/2020](https://img.shields.io/badge/Court%20Bundles-Reglur%20D%C3%B3mst%C3%B3las%C3%BDslunnar%201%2F2020-orange.svg)](#purpose--capabilities)
 
+[![Tech Stack](https://skillicons.dev/icons?i=nextjs,react,ts,tailwind,nodejs,postgres,docker,kubernetes)](https://skillicons.dev)
+
+[![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/) [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://react.dev/) [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/) [![Node.js](https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/) [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/) [![Keycloak](https://img.shields.io/badge/Keycloak-E35925?logo=keycloak&logoColor=white)](https://www.keycloak.org/) [![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![K3s / Kubernetes](https://img.shields.io/badge/K3s%20%2F%20K8s-326CE5?logo=kubernetes&logoColor=white)](https://k3s.io/) [![Ollama](https://img.shields.io/badge/Ollama-000000?logo=ollama&logoColor=white)](https://ollama.com/)
+
 ---
 
 ## Executive Summary & Security Posture
