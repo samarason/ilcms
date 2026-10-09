@@ -85,6 +85,8 @@ export function LegalDraftingView({
   const [draftResult, setDraftResult] = useState<LegalDraftResponse | null>(null);
   const [editableContent, setEditableContent] = useState("");
   const [viewMode, setViewMode] = useState<"preview" | "edit">("preview");
+  const [showDraftModal, setShowDraftModal] = useState(false);
+  const [isModalMaximized, setIsModalMaximized] = useState(false);
 
   // Save document state
   const [isSaving, setIsSaving] = useState(false);
@@ -190,6 +192,7 @@ export function LegalDraftingView({
       setDraftResult(data);
       setEditableContent(data.content);
       setViewMode("preview");
+      setShowDraftModal(true);
     } catch (err: any) {
       console.error("Villa við skjalagerð:", err);
       alert("Ekki tókst að mynda drög: " + (err.message || err));
@@ -352,9 +355,9 @@ export function LegalDraftingView({
         </div>
       </div>
 
-      {/* Main Drafting Workspace Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: draftResult ? "1fr 1fr" : "1fr", gap: "20px" }}>
-        {/* Left Column: Configuration & Inputs */}
+      {/* Main Drafting Workspace */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+        {/* Configuration & Inputs */}
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {/* Step 1: Document Type & Court Details */}
           <div
@@ -889,254 +892,470 @@ export function LegalDraftingView({
               </>
             )}
           </button>
-        </div>
 
-        {/* Right Column: Output Viewer & Editor */}
-        {draftResult && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-            {/* Metadata & Actions Header */}
+          {/* Quick Launcher Card if draft has already been generated */}
+          {draftResult && (
             <div
+              id="draft-ready-banner"
               style={{
-                background: "#ffffff",
-                border: "1px solid #e2e8f0",
+                background: "#f0fdf4",
+                border: "1px solid #86efac",
                 borderRadius: "8px",
-                padding: "16px",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                padding: "14px 18px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "12px",
+                flexWrap: "wrap",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px", marginBottom: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "1.3rem" }}>🪟</span>
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "1.1rem" }}>
-                      {draftResult.doc_type === "stefna" ? "⚖️" : "🛡️"}
-                    </span>
-                    <h3 style={{ margin: 0, fontSize: "1.05rem", color: "#0f172a" }}>
-                      {draftResult.title}
-                    </h3>
+                  <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "#166534" }}>
+                    Drög tilbúin: {draftResult.title}
                   </div>
-                  <div style={{ fontSize: "0.76rem", color: "#64748b", marginTop: "3px" }}>
-                    {draftResult.court_name} • {draftResult.stats.word_count} orð • {draftResult.stats.statutes_count} lagaákvæði • {draftResult.stats.documents_count} sönnunargögn
+                  <div style={{ fontSize: "0.76rem", color: "#4b5563" }}>
+                    {draftResult.court_name} • {draftResult.stats.word_count} orð • Smelltu til að skoða í sjálfstæðum glugga
                   </div>
                 </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span
-                    style={{
-                      fontSize: "0.72rem",
-                      padding: "3px 8px",
-                      borderRadius: "4px",
-                      fontWeight: 600,
-                      background:
-                        draftResult.inference_source === "ollama_airgap"
-                          ? "#dbeafe"
-                          : "#f3e8ff",
-                      color:
-                        draftResult.inference_source === "ollama_airgap"
-                          ? "#1e40af"
-                          : "#6b21a8",
-                      border:
-                        draftResult.inference_source === "ollama_airgap"
-                          ? "1px solid #bfdbfe"
-                          : "1px solid #d8b4fe",
-                    }}
-                  >
-                    {draftResult.inference_source === "ollama_airgap"
-                      ? "🔵 Ollama Local Airgap"
-                      : "🟣 Íslensk réttarfarsvél"}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "0.7rem",
-                      padding: "2px 6px",
-                      borderRadius: "4px",
-                      fontWeight: 600,
-                      background: "#f0fdf4",
-                      color: "#166534",
-                      border: "1px solid #bbf7d0",
-                    }}
-                  >
-                    🛡️ 100% Air-Gapped
-                  </span>
-                </div>
               </div>
-
-              {/* View/Edit Switcher and Utility Buttons */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-                <div style={{ display: "flex", gap: "4px", background: "#f1f5f9", padding: "3px", borderRadius: "6px" }}>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("preview")}
-                    style={{
-                      padding: "4px 10px",
-                      borderRadius: "4px",
-                      border: "none",
-                      fontSize: "0.78rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      background: viewMode === "preview" ? "#ffffff" : "transparent",
-                      color: viewMode === "preview" ? "#0f172a" : "#64748b",
-                      boxShadow: viewMode === "preview" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
-                    }}
-                  >
-                    📜 Forskoðun
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("edit")}
-                    style={{
-                      padding: "4px 10px",
-                      borderRadius: "4px",
-                      border: "none",
-                      fontSize: "0.78rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      background: viewMode === "edit" ? "#ffffff" : "transparent",
-                      color: viewMode === "edit" ? "#0f172a" : "#64748b",
-                      boxShadow: viewMode === "edit" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
-                    }}
-                  >
-                    ✏️ Breyta texta
-                  </button>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <button
-                    type="button"
-                    onClick={handleCopy}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "5px",
-                      background: copySuccess ? "#dcfce7" : "#ffffff",
-                      color: copySuccess ? "#166534" : "#334155",
-                      border: copySuccess ? "1px solid #86efac" : "1px solid #cbd5e1",
-                      borderRadius: "5px",
-                      padding: "5px 10px",
-                      fontSize: "0.78rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <span>{copySuccess ? "✓" : "📋"}</span>
-                    <span>{copySuccess ? "Afritað!" : "Afrita"}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handlePrint}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "5px",
-                      background: "#ffffff",
-                      color: "#334155",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "5px",
-                      padding: "5px 10px",
-                      fontSize: "0.78rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <span>🖨️</span>
-                    <span>Prenta / PDF</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    id="btn-save-draft-document"
-                    onClick={handleSaveAsDocument}
-                    disabled={isSaving}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "5px",
-                      background: "#16a34a",
-                      color: "#ffffff",
-                      border: "none",
-                      borderRadius: "5px",
-                      padding: "6px 12px",
-                      fontSize: "0.82rem",
-                      fontWeight: 700,
-                      cursor: isSaving ? "not-allowed" : "pointer",
-                      boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-                    }}
-                  >
-                    <span>{isSaving ? "⏳" : "💾"}</span>
-                    <span>{isSaving ? "Vistar..." : "Vista sem málsskjal"}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Success notification banner */}
-              {saveSuccessMsg && (
-                <div
-                  style={{
-                    marginTop: "12px",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    background: "#f0fdf4",
-                    border: "1px solid #86efac",
-                    color: "#166534",
-                    fontSize: "0.82rem",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                  }}
-                >
-                  <span>✓</span>
-                  <span>{saveSuccessMsg}</span>
-                </div>
-              )}
+              <button
+                type="button"
+                id="btn-reopen-draft-window"
+                onClick={() => setShowDraftModal(true)}
+                style={{
+                  background: "#16a34a",
+                  color: "#ffffff",
+                  padding: "8px 16px",
+                  borderRadius: "6px",
+                  border: "none",
+                  fontWeight: 700,
+                  fontSize: "0.82rem",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  boxShadow: "0 2px 4px rgba(22,163,74,0.3)",
+                }}
+              >
+                <span>🪟</span>
+                <span>Opna í sjálfstæðum glugga</span>
+              </button>
             </div>
+          )}
+        </div>
+      </div>
 
-            {/* Document Content View / Editor */}
+      {/* DEDICATED INTERFACE WINDOW (SJÁLFSTÆÐUR GLUGGI) MODAL */}
+      {showDraftModal && draftResult && (
+        <div
+          id="drafting-dedicated-window-backdrop"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(6, 10, 20, 0.85)",
+            backdropFilter: "blur(6px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: isModalMaximized ? "0" : "16px",
+            overflow: "hidden",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowDraftModal(false);
+          }}
+        >
+          <div
+            id="drafting-dedicated-window-container"
+            style={{
+              width: isModalMaximized ? "100vw" : "96vw",
+              maxWidth: isModalMaximized ? "100%" : "1350px",
+              height: isModalMaximized ? "100vh" : "92vh",
+              background: "#090d16",
+              border: isModalMaximized ? "none" : "1px solid #2563eb",
+              borderRadius: isModalMaximized ? "0" : "12px",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.85)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              color: "#f8fafc",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header Bar */}
             <div
               style={{
-                background: "#ffffff",
-                border: "1px solid #cbd5e1",
-                borderRadius: "8px",
-                padding: "24px",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.04)",
-                minHeight: "560px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "14px 20px",
+                background: "#0a192f",
+                borderBottom: "1px solid #1e3a8a",
+                flexWrap: "wrap",
+                gap: "10px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  style={{
+                    width: "38px",
+                    height: "38px",
+                    borderRadius: "8px",
+                    background: "linear-gradient(135deg, #1d4ed8, #2563eb)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "1.2rem",
+                    boxShadow: "0 2px 10px rgba(37, 99, 235, 0.35)",
+                  }}
+                >
+                  {draftResult.doc_type === "stefna" ? "⚖️" : "🛡️"}
+                </div>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                    <h2 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700, color: "#f8fafc" }}>
+                      Sjálfstæður Gluggi: {draftResult.title}
+                    </h2>
+                    <span
+                      style={{
+                        background: "#1e3a8a",
+                        color: "#93c5fd",
+                        border: "1px solid #2563eb",
+                        padding: "2px 8px",
+                        borderRadius: "10px",
+                        fontSize: "0.68rem",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Sjálfstæður Gluggi
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.68rem",
+                        padding: "2px 8px",
+                        borderRadius: "10px",
+                        fontWeight: 600,
+                        background:
+                          draftResult.inference_source === "ollama_airgap"
+                            ? "#172554"
+                            : "#2e1065",
+                        color:
+                          draftResult.inference_source === "ollama_airgap"
+                            ? "#93c5fd"
+                            : "#d8b4fe",
+                        border:
+                          draftResult.inference_source === "ollama_airgap"
+                            ? "1px solid #1d4ed8"
+                            : "1px solid #7c3aed",
+                      }}
+                    >
+                      {draftResult.inference_source === "ollama_airgap"
+                        ? "🔵 Ollama Local Airgap"
+                        : "🟣 Íslensk réttarfarsvél"}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.68rem",
+                        padding: "2px 8px",
+                        borderRadius: "10px",
+                        fontWeight: 600,
+                        background: "#064e3b",
+                        color: "#6ee7b7",
+                        border: "1px solid #059669",
+                      }}
+                    >
+                      🛡️ 100% Air-Gapped
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "0.74rem", color: "#94a3b8", marginTop: "2px" }}>
+                    {activeCase.case_number} • {activeCase.title} • {draftResult.court_name} • {draftResult.stats.word_count} orð • {draftResult.stats.statutes_count} lagaákvæði • {draftResult.stats.documents_count} sönnunargögn
+                  </div>
+                </div>
+              </div>
+
+              {/* Header Controls */}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <button
+                  type="button"
+                  onClick={() => setIsModalMaximized(!isModalMaximized)}
+                  title={isModalMaximized ? "Minnka glugga" : "Hámarka glugga"}
+                  style={{
+                    background: "#1e293b",
+                    border: "1px solid #334155",
+                    color: "#94a3b8",
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "1rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {isModalMaximized ? "🗗" : "🗖"}
+                </button>
+                <button
+                  type="button"
+                  id="btn-close-draft-window-modal"
+                  onClick={() => setShowDraftModal(false)}
+                  title="Loka glugga"
+                  style={{
+                    background: "#1e293b",
+                    border: "1px solid #334155",
+                    color: "#94a3b8",
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "1.2rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Sub-Toolbar: Mode switcher & Actions */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "10px 20px",
+                background: "#0f172a",
+                borderBottom: "1px solid #1e293b",
+                flexWrap: "wrap",
+                gap: "10px",
+              }}
+            >
+              <div style={{ display: "flex", gap: "6px", background: "#1e293b", padding: "3px", borderRadius: "6px" }}>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("preview")}
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: "4px",
+                    border: "none",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    background: viewMode === "preview" ? "#2563eb" : "transparent",
+                    color: viewMode === "preview" ? "#ffffff" : "#94a3b8",
+                    boxShadow: viewMode === "preview" ? "0 1px 2px rgba(0,0,0,0.2)" : "none",
+                  }}
+                >
+                  📜 Forskoðun
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("edit")}
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: "4px",
+                    border: "none",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    background: viewMode === "edit" ? "#2563eb" : "transparent",
+                    color: viewMode === "edit" ? "#ffffff" : "#94a3b8",
+                    boxShadow: viewMode === "edit" ? "0 1px 2px rgba(0,0,0,0.2)" : "none",
+                  }}
+                >
+                  ✏️ Breyta texta
+                </button>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    background: copySuccess ? "#065f46" : "#1e293b",
+                    color: copySuccess ? "#6ee7b7" : "#cbd5e1",
+                    border: "1px solid #334155",
+                    borderRadius: "5px",
+                    padding: "6px 12px",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  <span>{copySuccess ? "✓" : "📋"}</span>
+                  <span>{copySuccess ? "Afritað!" : "Afrita"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    background: "#1e293b",
+                    color: "#cbd5e1",
+                    border: "1px solid #334155",
+                    borderRadius: "5px",
+                    padding: "6px 12px",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  <span>🖨️</span>
+                  <span>Prenta / PDF</span>
+                </button>
+
+                <button
+                  type="button"
+                  id="btn-save-draft-document-window"
+                  onClick={handleSaveAsDocument}
+                  disabled={isSaving}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    background: "#16a34a",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: "5px",
+                    padding: "6px 14px",
+                    fontSize: "0.82rem",
+                    fontWeight: 700,
+                    cursor: isSaving ? "not-allowed" : "pointer",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
+                  }}
+                >
+                  <span>{isSaving ? "⏳" : "💾"}</span>
+                  <span>{isSaving ? "Vistar..." : "Vista sem málsskjal"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Save Notice */}
+            {saveSuccessMsg && (
+              <div
+                style={{
+                  margin: "8px 20px 0 20px",
+                  padding: "8px 14px",
+                  borderRadius: "6px",
+                  background: "#064e3b",
+                  border: "1px solid #059669",
+                  color: "#6ee7b7",
+                  fontSize: "0.82rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <span>✓</span>
+                <span>{saveSuccessMsg}</span>
+              </div>
+            )}
+
+            {/* Window Content Body */}
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                padding: "20px",
+                background: "#030712",
+                display: "flex",
+                flexDirection: "column",
+                minHeight: 0,
               }}
             >
               {viewMode === "preview" ? (
                 <div
                   style={{
-                    fontFamily: "Georgia, 'Times New Roman', serif",
-                    fontSize: "0.92rem",
-                    lineHeight: 1.7,
+                    background: "#ffffff",
                     color: "#0f172a",
+                    maxWidth: "880px",
+                    width: "100%",
+                    margin: "0 auto",
+                    padding: "48px 56px",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+                    fontFamily: "Georgia, 'Times New Roman', serif",
+                    fontSize: "0.95rem",
+                    lineHeight: 1.8,
                     whiteSpace: "pre-wrap",
                     wordBreak: "break-word",
+                    boxSizing: "border-box",
                   }}
                 >
                   {editableContent || draftResult.content}
                 </div>
               ) : (
                 <textarea
-                  rows={26}
+                  rows={28}
                   value={editableContent}
                   onChange={(e) => setEditableContent(e.target.value)}
                   style={{
                     width: "100%",
-                    fontFamily: "Georgia, 'Times New Roman', serif",
-                    fontSize: "0.92rem",
+                    maxWidth: "960px",
+                    margin: "0 auto",
+                    flex: 1,
+                    background: "#0f172a",
+                    color: "#f8fafc",
+                    fontFamily: "Consolas, 'Courier New', monospace",
+                    fontSize: "0.88rem",
                     lineHeight: 1.7,
-                    padding: "12px",
-                    borderRadius: "4px",
-                    border: "1px solid #94a3b8",
-                    color: "#0f172a",
+                    padding: "20px",
+                    borderRadius: "8px",
+                    border: "1px solid #334155",
                     boxSizing: "border-box",
-                    resize: "vertical",
+                    resize: "none",
                   }}
                 />
               )}
             </div>
+
+            {/* Footer */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "12px 20px",
+                background: "#090d16",
+                borderTop: "1px solid #1e293b",
+                fontSize: "0.78rem",
+                color: "#94a3b8",
+              }}
+            >
+              <div>
+                💡 Sjálfstæður gluggi fyrir réttarfarsskjalagerð í ILCMS.
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDraftModal(false)}
+                style={{
+                  background: "#1e293b",
+                  color: "#cbd5e1",
+                  border: "1px solid #334155",
+                  padding: "6px 14px",
+                  borderRadius: "5px",
+                  fontWeight: 600,
+                  fontSize: "0.8rem",
+                  cursor: "pointer",
+                }}
+              >
+                Loka glugga
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

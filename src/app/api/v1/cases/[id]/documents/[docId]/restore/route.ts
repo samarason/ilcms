@@ -3,10 +3,11 @@ import { docsStore, DocumentVersion } from "@/lib/store";
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string; docId: string } }
+  { params }: { params: Promise<{ id: string; docId: string }> | { id: string; docId: string } }
 ) {
   try {
-    const { id: caseId, docId } = params;
+    const resolved = await Promise.resolve(params);
+    const { id: caseId, docId } = resolved;
     const doc = docsStore.find((d) => d.id === docId && d.case_id === caseId);
 
     if (!doc) {

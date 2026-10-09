@@ -8,13 +8,20 @@ metadata:
     app.kubernetes.io/component: auth
     app.kubernetes.io/part-of: ilcms
 data:
+  master-realm.json: |
+    {
+      "id": "master",
+      "realm": "master",
+      "displayName": "Keycloak",
+      "sslRequired": "NONE"
+    }
   ilcms-realm.json: |
     {
       "id": "ilcms",
       "realm": "ilcms",
       "displayName": "ILCMS Íslenska Málastjórnunarkerfið",
       "enabled": true,
-      "sslRequired": "none",
+      "sslRequired": "NONE",
       "registrationAllowed": false,
       "resetPasswordAllowed": true,
       "rememberMe": true,
@@ -142,11 +149,13 @@ spec:
           args:
             - "start-dev"
             - "--import-realm"
+            - "--proxy-headers=xforwarded"
+            - "--hostname-strict=false"
+            - "--hostname-strict-https=false"
+            - "--http-enabled=true"
           ports:
             - containerPort: 8080
               name: http
-            - containerPort: 9000
-              name: management
           env:
             - name: KC_DB
               value: postgres
@@ -166,8 +175,14 @@ spec:
               value: "true"
             - name: KC_HTTP_ENABLED
               value: "true"
+            - name: KC_PROXY_HEADERS
+              value: "xforwarded"
             - name: KC_HOSTNAME_STRICT
               value: "false"
+            - name: KC_HOSTNAME_STRICT_HTTPS
+              value: "false"
+            - name: KC_HTTP_MANAGEMENT_PORT
+              value: "8080"
             # Limit Keycloak heap to 768MB so laptop keeps 8GB+ for Ollama LLM
             - name: JAVA_OPTS_KC_HEAP
               value: "-Xms256m -Xmx768m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m"
@@ -181,20 +196,30 @@ spec:
           volumeMounts:
             - name: realm-import
               mountPath: /opt/keycloak/data/import
+          startupProbe:
+            httpGet:
+              path: /health/started
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 40
           readinessProbe:
             httpGet:
               path: /health/ready
-              port: 9000
-            initialDelaySeconds: 25
+              port: 8080
+            initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 3
+            failureThreshold: 5
           livenessProbe:
             httpGet:
               path: /health/live
-              port: 9000
-            initialDelaySeconds: 45
-            periodSeconds: 20
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 15
             timeoutSeconds: 3
+            failureThreshold: 5
       volumes:
         - name: realm-import
           configMap:
@@ -214,9 +239,5 @@ spec:
       targetPort: 8080
       protocol: TCP
       name: http
-    - port: 9000
-      targetPort: 9000
-      protocol: TCP
-      name: management
   selector:
     app: keycloak

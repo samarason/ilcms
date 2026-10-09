@@ -139,6 +139,29 @@ export function LoginView() {
               >
                 🔑 Keycloak OIDC (ilcms-realm)
               </span>
+              <a
+                id="btn-login-open-webui"
+                href="/open-webui"
+                style={{
+                  fontSize: "0.74rem",
+                  background: "linear-gradient(135deg, #065f46, #059669)",
+                  color: "#ffffff",
+                  border: "1px solid #34d399",
+                  padding: "3px 10px",
+                  borderRadius: "20px",
+                  fontWeight: 700,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  textDecoration: "none",
+                  boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)",
+                }}
+                title="Opna sjálfstætt AI - Lögfræðiviðmót (Open WebUI) án innskráningar"
+              >
+                <span>💬</span>
+                <span>AI - Viðmót</span>
+                <span>↗</span>
+              </a>
             </div>
             <span style={{ fontSize: "0.7rem", color: "#64748b" }}>ISO 27001 / GDPR / Lög nr. 90/2018</span>
           </div>

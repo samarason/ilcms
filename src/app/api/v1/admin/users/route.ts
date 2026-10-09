@@ -1,15 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { INITIAL_USERS, AdminUser } from "@/lib/admin-store";
-
-let users: AdminUser[] = [...INITIAL_USERS];
+import { AdminUser } from "@/lib/admin-store";
+import {
+  fetchUsersFromKeycloak,
+  createUserInKeycloak,
+  updateUserInKeycloak,
+  deleteUserFromKeycloak,
+} from "@/lib/keycloak-admin";
 
 export async function GET() {
-  return NextResponse.json({
-    status: "ok",
-    realm: "ilcms",
-    totalUsers: users.length,
-    users,
-  });
+  try {
+    const { users, connected } = await fetchUsersFromKeycloak();
+    return NextResponse.json({
+      status: "ok",
+      realm: "ilcms",
+      totalUsers: users.length,
+      keycloakConnected: connected,
+      users,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message || "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -24,35 +37,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check duplicate email
-    if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
-      return NextResponse.json(
-        { error: `Notandi með netfangið ${email} er þegar til í Keycloak.` },
-        { status: 409 }
-      );
-    }
-
-    const newUser: AdminUser = {
-      id: `usr-${Date.now()}`,
+    const result = await createUserInKeycloak({
       name: name.trim(),
       email: email.toLowerCase().trim(),
       username: (username || email.split("@")[0]).toLowerCase().trim(),
       role: role || "LAWYER",
-      enabled: true,
+      department: department?.trim() || "Málflutningur & Einkamálaréttur",
+      password: password || "Ilcms2026!Secret",
       mfaEnabled: mfaEnabled ?? true,
-      createdDate: new Date().toISOString().split("T")[0],
-      lastLogin: "Ekki enn innskráður",
-      keycloakSub: `kc-sub-${Math.random().toString(36).substring(2, 9)}`,
-      department: department?.trim() || "Almenn lögfræðiþjónusta",
-    };
+    });
 
-    users = [newUser, ...users];
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error || "Mistókst að stofna notanda í Keycloak." },
+        { status: 400 }
+      );
+    }
+
+    const { users, connected } = await fetchUsersFromKeycloak();
+
+    const statusMsg = result.createdInKeycloak
+      ? `Notandi '${result.user?.name}' stofnaður í Keycloak realm 'ilcms' (Hlutverk: ${result.user?.role}).`
+      : `Notandi '${result.user?.name}' vistaður í staðbundið minni (Keycloak tenging ekki virk).`;
 
     return NextResponse.json({
       success: true,
-      user: newUser,
+      user: result.user,
       users,
-      message: `Notandi '${newUser.name}' stofnaður í Keycloak (Hlutverk: ${newUser.role}).`,
+      keycloakConnected: connected,
+      createdInKeycloak: result.createdInKeycloak,
+      message: statusMsg,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Internal server error" }, { status: 500 });
@@ -62,16 +76,16 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, action, role, enabled, mfaEnabled, department, newPassword } = body;
+    const { id, action, role, enabled, department, newPassword } = body;
 
-    const userIndex = users.findIndex((u) => u.id === id);
-    if (userIndex === -1) {
-      return NextResponse.json({ error: `Notandi fannst ekki (id: ${id})` }, { status: 404 });
+    if (!id) {
+      return NextResponse.json({ error: "Missing user id" }, { status: 400 });
     }
 
-    const current = users[userIndex];
+    const { users: currentUsers } = await fetchUsersFromKeycloak();
+    const targetUser = currentUsers.find((u) => u.id === id || u.keycloakSub === id);
 
-    if (current.email === "admin@ilcms.is" || current.role === "ADMIN") {
+    if (targetUser && (targetUser.email === "admin@ilcms.is" || targetUser.role === "ADMIN")) {
       if (role && role !== "ADMIN") {
         return NextResponse.json(
           { error: "Ekki er hægt að breyta hlutverki aðal kerfisstjóra (ADMIN)." },
@@ -87,26 +101,31 @@ export async function PUT(req: NextRequest) {
     }
 
     if (action === "reset-password") {
+      await updateUserInKeycloak(id, { newPassword: newPassword || "NýttLykilorð2026!" });
       return NextResponse.json({
         success: true,
-        message: `Lykilorð fyrir '${current.name}' (${current.email}) hefur verið endursett í Keycloak.`,
+        message: `Lykilorð fyrir '${targetUser?.name || id}' hefur verið endursett í Keycloak.`,
       });
     }
 
-    // Update fields
-    users[userIndex] = {
-      ...current,
-      role: role ?? current.role,
-      enabled: enabled ?? current.enabled,
-      mfaEnabled: mfaEnabled ?? current.mfaEnabled,
-      department: department ?? current.department,
-    };
+    const updateRes = await updateUserInKeycloak(id, {
+      role,
+      enabled,
+      department,
+      newPassword,
+    });
+
+    if (!updateRes.success) {
+      return NextResponse.json({ error: updateRes.error || "Uppfærsla mistókst" }, { status: 400 });
+    }
+
+    const { users, connected } = await fetchUsersFromKeycloak();
 
     return NextResponse.json({
       success: true,
-      user: users[userIndex],
       users,
-      message: `Notandi '${current.name}' var uppfærður í Keycloak.`,
+      keycloakConnected: connected,
+      message: `Notandi '${targetUser?.name || id}' var uppfærður í Keycloak.`,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Internal server error" }, { status: 500 });
@@ -122,24 +141,24 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Missing user id parameter" }, { status: 400 });
     }
 
-    const targetUser = users.find((u) => u.id === id);
-    if (!targetUser) {
-      return NextResponse.json({ error: `Notandi ${id} fannst ekki.` }, { status: 404 });
-    }
+    const { users: currentUsers } = await fetchUsersFromKeycloak();
+    const targetUser = currentUsers.find((u) => u.id === id || u.keycloakSub === id);
 
-    if (targetUser.email === "admin@ilcms.is") {
+    if (targetUser && targetUser.email === "admin@ilcms.is") {
       return NextResponse.json(
         { error: "Ekki er hægt að eyða aðal kerfisstjóra (admin@ilcms.is)." },
         { status: 403 }
       );
     }
 
-    users = users.filter((u) => u.id !== id);
+    await deleteUserFromKeycloak(id);
+    const { users, connected } = await fetchUsersFromKeycloak();
 
     return NextResponse.json({
       success: true,
-      message: `Notanda '${targetUser.name}' (${targetUser.email}) eytt úr Keycloak.`,
+      message: `Notanda '${targetUser?.name || id}' eytt úr Keycloak.`,
       users,
+      keycloakConnected: connected,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || "Internal server error" }, { status: 500 });

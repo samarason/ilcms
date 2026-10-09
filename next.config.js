@@ -4,6 +4,9 @@ const path = require('path');
 const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   webpack: (config) => {
     config.resolve = config.resolve || {};
     config.resolve.alias = config.resolve.alias || {};

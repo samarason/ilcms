@@ -8,6 +8,10 @@
 [![Jurisdiction: Iceland 91/1991](https://img.shields.io/badge/Jurisdiction-%C3%8Dslenskt%20R%C3%A9ttarfar%20(91%2F1991)-indigo.svg)](#purpose--capabilities)
 [![Court Bundles: Dómstólasýslan 1/2020](https://img.shields.io/badge/Court%20Bundles-Reglur%20D%C3%B3mst%C3%B3las%C3%BDslunnar%201%2F2020-orange.svg)](#purpose--capabilities)
 
+[![Tech Stack](https://skillicons.dev/icons?i=nextjs,react,ts,tailwind,nodejs,postgres,docker,kubernetes)](https://skillicons.dev)
+
+[![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/) [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://react.dev/) [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/) [![Node.js](https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/) [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/) [![Keycloak](https://img.shields.io/badge/Keycloak-E35925?logo=keycloak&logoColor=white)](https://www.keycloak.org/) [![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/) [![K3s / Kubernetes](https://img.shields.io/badge/K3s%20%2F%20K8s-326CE5?logo=kubernetes&logoColor=white)](https://k3s.io/) [![Ollama](https://img.shields.io/badge/Ollama-000000?logo=ollama&logoColor=white)](https://ollama.com/)
+
 ---
 
 ## Executive Summary & Security Posture
@@ -132,6 +136,19 @@ kubectl get svc -n ilcms open-webui
 # 127.0.0.1 ilcms.local auth.ilcms.local chat.ilcms.local
 # Then navigate to: http://chat.ilcms.local
 ```
+
+### Unified Port 3000 Single-Port Access (Remote & Tunnel Environments)
+When deploying on remote servers, VMs, or environments where **only port 3000** is forwarded or reachable by your browser:
+1. **In-App Open WebUI:** Open WebUI is directly accessible inside the web application at `http://127.0.0.1:3000` via the **💬 Open WebUI** tab or the top header button. It communicates with Ollama internally over the local backend.
+2. **Reverse Proxy Endpoints on Port 3000:**
+   - **Ollama AI API:** `http://127.0.0.1:3000/api/v1/ollama/api/tags`, `chat`, `generate`
+   - **Keycloak OIDC:** `http://127.0.0.1:3000/realms/ilcms/.well-known/openid-configuration`
+   - **Open WebUI Gateway:** `http://127.0.0.1:3000/api/v1/openwebui/health`
+3. **Forward All Ports at Once (Optional):**
+   If you wish to expose all ports (3000, 3080, 8080, 11434) to your client machine, run the provided helper script:
+   ```bash
+   ./scripts/port-forward-all.sh
+   ```
 
 ---
 
@@ -406,6 +423,33 @@ Below are high-resolution screenshots illustrating the end-to-end legal workflow
 <br/>
 <a href="assets/images/009.3-ilcms.png" target="_blank">
   <img src="assets/images/009.3-ilcms.png" alt="Statutory and Precedent Citations" width="100%" />
+</a>
+
+<br/>
+
+#### Figure 9.4: Integrated 3-Pane Legal Workspace with Air-Gapped AI Assistant
+*Comprehensive litigation workspace view featuring the active case matter, evidentiary documents, and real-time on-device legal AI assistant.*
+<br/>
+<a href="assets/images/009.4-ilcms.png" target="_blank" title="Click to view full-resolution image (3508x1804)">
+  <img src="assets/images/009.4-ilcms.png" alt="Integrated 3-Pane Legal Workspace with Air-Gapped AI Assistant" width="100%" />
+</a>
+
+<br/>
+
+#### Figure 9.5: In-App Open WebUI Legal Intelligence Dialog (*AI - Lögfræðiviðmót Gluggi*)
+*In-app modal dialog providing attorneys with localized Open WebUI chat, model persona configuration, and air-gap security verification.*
+<br/>
+<a href="assets/images/009.5-ilcms.png" target="_blank" title="Click to view full-resolution image (2740x1702)">
+  <img src="assets/images/009.5-ilcms.png" alt="In-App Open WebUI Legal Intelligence Dialog" width="100%" />
+</a>
+
+<br/>
+
+#### Figure 9.6: Dedicated Standalone Open WebUI Legal Interface Window (*Sjálfstæður Gluggi*)
+*Dedicated browser window (`/open-webui`) equipped with active case switching, multi-document context analysis, and strict zero-egress local inference.*
+<br/>
+<a href="assets/images/009.6-ilcms.png" target="_blank" title="Click to view full-resolution image (2726x1690)">
+  <img src="assets/images/009.6-ilcms.png" alt="Dedicated Standalone Open WebUI Legal Interface Window" width="100%" />
 </a>
 
 ---
